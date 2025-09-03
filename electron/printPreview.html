@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Print Preview</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        font-size: 14px;
+        color: #000;
+      }
+      h1,
+      h2 {
+        text-align: center;
+        margin: 0;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      h2 {
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      table,
+      th,
+      td {
+        border-bottom: 1px solid #000;
+      }
+      th,
+      td {
+        padding: 5px;
+        text-align: left;
+      }
+      .right {
+        text-align: right;
+      }
+      .center {
+        text-align: center;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 12px;
+      }
+      hr {
+        border: none;
+        border-top: 1px solid #000;
+        margin: 10px 0;
+      }
+      button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="preview">
+      <h1>BAKED</h1>
+      <h2>Cakes & Pastries</h2>
+      <p class="center">
+        Changampuzha park Metro station,<br />
+        Devankulangara, Mamangalam,<br />
+        Edappally, Eranakulam,<br />
+        Kerala, Pin:682024<br />
+        Mobile: 7736321555<br />
+        Web: https://getitbaked.in
+      </p>
+      <hr />
+      <table>
+        <tr>
+          <td>Date: 03 Sep, 2025 10:58 AM</td>
+          <td class="right">Invoice NO: INVC14-01838</td>
+        </tr>
+        <tr>
+          <td>GST NO: 32CQWPP4392J1Z2</td>
+          <td class="right">Customer: Walking Customer</td>
+        </tr>
+      </table>
+      <hr />
+      <table>
+        <tr>
+          <th>Sl.</th>
+          <th>Name</th>
+          <th class="right">MRP</th>
+          <th class="right">Qty</th>
+          <th class="right">Tax %</th>
+          <th class="right">Total</th>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>Candle @ 10</td>
+          <td class="right">8.48</td>
+          <td class="right">8</td>
+          <td class="right">18</td>
+          <td class="right">80.00</td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <td class="right">Taxable Value:</td>
+          <td class="right">67.80</td>
+        </tr>
+        <tr>
+          <td class="right">Total CGST:</td>
+          <td class="right">6.10</td>
+        </tr>
+        <tr>
+          <td class="right">Total SGST:</td>
+          <td class="right">6.10</td>
+        </tr>
+        <tr>
+          <td class="right">Grand Total:</td>
+          <td class="right">80.00</td>
+        </tr>
+        <tr>
+          <td class="right"><b>Net Total:</b></td>
+          <td class="right"><b>80.00</b></td>
+        </tr>
+      </table>
+      <hr />
+      <p class="center">
+        <em
+          >Thank you for choosing us!<br />For any Complaints & Suggestions,</em
+        >
+      </p>
+      <p class="center">Contact us on +91 9539938305</p>
+
+      <button id="okBtn">Print</button>
+      <button onclick="window.close()">Cancel</button>
+    </div>
+
+    <script>
+      const okBtn = document.getElementById("okBtn");
+      okBtn.onclick = () => {
+        const billData = [
+          {
+            type: "text",
+            value: "BAKED Cakes & Pastries",
+            style: { textAlign: "center", fontWeight: "700" },
+          },
+          {
+            type: "table",
+            tableHeader: ["Sl.", "Name", "MRP", "Qty", "Tax %", "Total"],
+            tableBody: [["1", "Candle @ 10", "8.48", "8", "18", "80.00"]],
+            tableFooter: [
+              ["Taxable Value", "", "", "", "", "67.80"],
+              ["Total CGST", "", "", "", "", "6.10"],
+              ["Total SGST", "", "", "", "", "6.10"],
+              ["Grand Total", "", "", "", "", "80.00"],
+              ["Net Total", "", "", "", "", "80.00"],
+            ],
+          },
+        ];
+
+        window.printerAPI.confirmPrint(billData);
+        window.close();
+      };
+    </script>
+  </body>
+</html>
