@@ -6,6 +6,10 @@ import SearchableDropdown from "../components/common/SearchableDropdown";
 import { useReactToPrint } from "react-to-print";
 import BillPrint from "./BillPrint";
 import { getCustomersInfo } from "../service/userService";
+import { saveBillingInfo } from "../service/billingService";
+import NumberInput from "../components/common/NumberInput";
+import toast from "react-hot-toast";
+
 const POS = () => {
   const [items, setItems] = useState([
     {
@@ -22,19 +26,25 @@ const POS = () => {
       total: 0,
     },
   ]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState({
+    id: 0,
+    name: "Walking Customer",
+  });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const paymentSelectRef = useRef(null);
+  const lastF4TimeRef = useRef(0);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     invoiceNo: "INV-" + Math.floor(Math.random() * 10000),
     customer: "Walking Customer",
     customerNote: "",
-    amount: "",
-    amountReceived: "",
-    balanceToCustomer: "",
+    amount: 0,
+    amountReceived: 0,
+    balanceToCustomer: 0,
+    balanceAmount: 0,
     discount: 0,
     advanceAmount: 0,
     paymentType: "",
@@ -65,6 +75,47 @@ const POS = () => {
       )
       .join(),
   ]);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        addNewRow();
+      }
+
+      // Step 1: F4 focuses the select
+      if (e.key === "F4") {
+        e.preventDefault();
+        if (paymentSelectRef.current) {
+          paymentSelectRef.current.focus();
+        }
+      }
+
+      // Step 2: Enter opens it only if the select is focused
+      if (
+        e.key === "Enter" &&
+        document.activeElement === paymentSelectRef.current
+      ) {
+        e.preventDefault();
+        paymentSelectRef.current.click(); // this will open the dropdown
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [items]);
+
+  useEffect(() => {
+    const initTotals = calculateTotals();
+    setFormData((prev) => ({
+      ...prev,
+      amount: initTotals.grandTotal,
+      advanceAmount: initTotals.grandTotal,
+      amountReceived: initTotals.grandTotal,
+      balanceToCustomer: 0,
+    }));
+  }, [items]);
 
   const addNewRow = () => {
     const newItem = {
@@ -104,24 +155,34 @@ const POS = () => {
     const totalIGST = items.reduce((sum, item) => sum + item.igstAmount, 0);
     const grandTotal =
       totalTaxableValue + totalCGST + totalIGST - formData.discount;
-    const balanceAmount = grandTotal - formData.advanceAmount;
+
+    const advance = formData.advanceAmount || 0;
+
+    let balanceAmount = 0;
+    let balanceToCustomer = 0;
+
+    if (advance < grandTotal) {
+      balanceAmount = grandTotal - advance;
+    } else if (advance > grandTotal) {
+      balanceToCustomer = Number((advance - grandTotal).toFixed(2));
+    }
 
     return {
-      totalTaxableValue,
-      totalCGST,
-      totalIGST,
-      grandTotal,
+      totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
+      totalCGST: Number(totalCGST.toFixed(2)),
+      totalIGST: Number(totalIGST.toFixed(2)),
+      grandTotal: Number(grandTotal.toFixed(2)),
       balanceAmount,
+      balanceToCustomer,
     };
   };
 
   const totals = calculateTotals();
+
   useEffect(() => {
     const getProducts = async () => {
       const result = await getProductsInfo();
-      const customers = await getCustomersInfo();
       setProducts(result);
-      setCustomers(customers);
     };
     getProducts();
   }, []);
@@ -186,12 +247,25 @@ const POS = () => {
 
   // ...
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!items || items.length === 0 || !items.some((i) => i.productId)) {
+      toast.error("⚠️ Please add at least one item before saving.");
+      return;
+    }
+    if (!formData.paymentType) {
+      toast.error("⚠️ Please select the payment type.");
+      return;
+    }
+
     const updatedFormData = {
       ...formData,
       customer: selectedCustomer?.name || formData.customer,
-      customerId: selectedCustomer?.id || null,
-      amount: items.reduce((sum, i) => sum + i.total, 0),
+      customerId: selectedCustomer?.id,
+      amount: Number(totals.grandTotal.toFixed(2)),
+      advanceAmount: Number(formData.advanceAmount.toFixed(2)),
+      amountReceived: Number(formData.amountReceived.toFixed(2)),
+      balanceToCustomer: Number(totals.balanceToCustomer.toFixed(2)),
+      balanceAmount: Number(totals.balanceAmount.toFixed(2)),
     };
 
     const newBill = {
@@ -200,7 +274,15 @@ const POS = () => {
     };
     setFormData(updatedFormData);
     setBill(newBill);
-    window.api.openPreview();
+    console.log(newBill);
+    try {
+      const result = await saveBillingInfo(newBill);
+      toast.success("Bill saved successfully");
+      console.log(result);
+    } catch (error) {
+      console.log(error);
+    }
+    // window.api.openPreview();
   };
 
   const handleSaveAndPrint = () => {
@@ -258,13 +340,15 @@ const POS = () => {
           </div>
           <div>
             <SearchableDropdown
-              items={customers}
               placeholder="Search and select customer..."
               label="Customer"
               shortcut={{ key: "Enter", shift: true }}
               onSelect={handleCustomerSelect}
               value={selectedCustomer}
               labelKey="name"
+              fetchItems={async (searchTerm) => {
+                return await getCustomersInfo(searchTerm);
+              }}
             />
           </div>
           <div>
@@ -416,11 +500,10 @@ const POS = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Amount
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     value={formData.amount}
-                    onChange={(e) =>
-                      setFormData({ ...formData, amount: e.target.value })
+                    onChange={(val) =>
+                      setFormData({ ...formData, amount: val })
                     }
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
@@ -429,14 +512,10 @@ const POS = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Amount Received
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     value={formData.amountReceived}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        amountReceived: e.target.value,
-                      })
+                    onChange={(val) =>
+                      setFormData({ ...formData, amountReceived: val })
                     }
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
@@ -445,14 +524,10 @@ const POS = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Balance to Customer
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     value={formData.balanceToCustomer}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        balanceToCustomer: e.target.value,
-                      })
+                    onChange={(val) =>
+                      setFormData({ ...formData, balanceToCustomer: val })
                     }
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
@@ -482,14 +557,10 @@ const POS = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Discount (%)</span>
-                  <input
-                    type="number"
+                  <NumberInput
                     value={formData.discount}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        discount: parseFloat(e.target.value) || 0,
-                      })
+                    onChange={(val) =>
+                      setFormData({ ...formData, discount: val })
                     }
                     className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-right"
                   />
@@ -500,15 +571,16 @@ const POS = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Advance Amount</span>
-                  <input
-                    type="number"
+                  <NumberInput
                     value={formData.advanceAmount}
-                    onChange={(e) =>
+                    onChange={(advance) => {
                       setFormData({
                         ...formData,
-                        advanceAmount: parseFloat(e.target.value) || 0,
-                      })
-                    }
+                        advanceAmount: advance,
+                        amountReceived: advance,
+                        balanceToCustomer: totals.grandTotal - advance,
+                      });
+                    }}
                     className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-right"
                   />
                 </div>
@@ -530,14 +602,14 @@ const POS = () => {
             <select
               className="border border-gray-300 rounded-lg px-3 py-2 bg-blue-600 text-white"
               value={formData.paymentType}
+              ref={paymentSelectRef}
               onChange={(e) =>
                 setFormData({ ...formData, paymentType: e.target.value })
               }
             >
               <option>— Select payment Type —</option>
               <option>Cash</option>
-              <option>Card</option>
-              <option>UPI</option>
+              <option>Online</option>
             </select>
           </div>
           <div className="flex space-x-2">

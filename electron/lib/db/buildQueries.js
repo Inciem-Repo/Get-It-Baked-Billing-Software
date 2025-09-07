@@ -98,3 +98,14 @@ export function buildBillHistorySelectQuery(conditions = {}, options = {}) {
 
   return query.trim();
 }
+
+export function buildSearchQuery(table, searchKey, searchTerm) {
+  const where = searchTerm
+    ? `${searchKey} LIKE '%${searchTerm.replace(/'/g, "''")}%'`
+    : "";
+  return (
+    `SELECT id, name FROM ${table}` +
+    (where ? ` WHERE ${where}` : "") +
+    " LIMIT 50"
+  );
+}

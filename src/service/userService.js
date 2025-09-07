@@ -1,6 +1,6 @@
-export const getCustomersInfo = async () => {
+export const getCustomersInfo = async (searchTerm) => {
   try {
-    const result = await window.api.getCustomers();
+    const result = await window.api.searchCustomers(searchTerm);
     return result;
   } catch (error) {
     console.error("Auth service error:", error);

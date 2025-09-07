@@ -22,6 +22,7 @@
     "mysql2": "^3.14.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.8.1",
     "react-to-print": "^3.1.1",
     "react-toastify": "^11.0.5"
@@ -50,12 +51,23 @@
   "build": {
     "appId": "com.mybilling.app",
     "productName": "BillingSoftware",
+    "directories": {
+      "output": "release"
+    },
     "files": [
       "dist/**/*",
       "electron/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }

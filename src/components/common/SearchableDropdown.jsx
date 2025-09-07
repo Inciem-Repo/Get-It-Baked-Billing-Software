@@ -8,6 +8,7 @@ const lastShortcutInstance = {};
 
 const SearchableDropdown = ({
   items = [],
+  fetchItems = null,
   placeholder = "Select an option...",
   onSelect,
   shortcut = null,
@@ -32,8 +33,28 @@ const SearchableDropdown = ({
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
+  const [dynamicItems, setDynamicItems] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Register/unregister dropdown instance
+  useEffect(() => {
+    if (!fetchItems) return;
+
+    const handler = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const results = await fetchItems(searchTerm);
+        setDynamicItems(results || []);
+      } catch (error) {
+        console.error("Dropdown fetch error:", error);
+        setDynamicItems([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm, fetchItems]);
+
   useEffect(() => {
     dropdownInstances.add(instanceId.current);
     return () => {
@@ -47,7 +68,6 @@ const SearchableDropdown = ({
   // Close other dropdowns when this one opens
   const closeOtherDropdowns = () => {
     if (activeDropdownId && activeDropdownId !== instanceId.current) {
-      // Trigger close event for other dropdowns
       window.dispatchEvent(
         new CustomEvent("closeDropdown", {
           detail: { excludeId: instanceId.current },
@@ -90,9 +110,9 @@ const SearchableDropdown = ({
     }
   }, [isOpen, isInTable]);
 
+  // save this as the last instance for this shortcut
   useEffect(() => {
     if (shortcut?.key) {
-      // save this as the last instance for this shortcut
       lastShortcutInstance[shortcut.key.toLowerCase()] = instanceId.current;
     }
 
@@ -116,8 +136,6 @@ const SearchableDropdown = ({
       const matchShift = shortcut.shift ? e.shiftKey : true;
       const matchCtrl = shortcut.ctrl ? e.ctrlKey : true;
       const matchAlt = shortcut.alt ? e.altKey : true;
-
-      // only trigger if THIS instance is the "last one" for this shortcut
       if (
         matchKey &&
         matchShift &&
@@ -159,12 +177,11 @@ const SearchableDropdown = ({
   useEffect(() => {
     setSelectedItem(value);
   }, [value]);
-  // Filter items based on search term
-  const filteredItems = items.filter((item) =>
+  const displayedItems = fetchItems ? dynamicItems : items;
+  const filteredItems = displayedItems.filter((item) =>
     item?.[labelKey]?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Check if component is inside a table and calculate position
   useEffect(() => {
     if (inputRef.current) {
       const tableParent = inputRef.current.closest(
@@ -187,7 +204,6 @@ const SearchableDropdown = ({
     let top = rect.bottom + window.scrollY;
     let direction = "down";
 
-    // If there's not enough space below but enough above, open upward
     if (spaceBelow < dropdownHeight + 10 && spaceAbove > dropdownHeight + 10) {
       top = rect.top + window.scrollY - dropdownHeight - 5;
       direction = "up";
@@ -248,7 +264,6 @@ const SearchableDropdown = ({
     }
   };
 
-  // Scroll highlighted item into view
   useEffect(() => {
     if (highlightedIndex >= 0 && listRef.current) {
       const highlightedElement = listRef.current.children[highlightedIndex];
@@ -375,7 +390,11 @@ const SearchableDropdown = ({
               >
                 <div className="overflow-auto" style={{ maxHeight }}>
                   <ul ref={listRef} className="py-1">
-                    {filteredItems.length > 0 ? (
+                    {loading ? (
+                      <li className="px-3 py-2 text-sm text-gray-500 italic">
+                        Loading...
+                      </li>
+                    ) : filteredItems.length > 0 ? (
                       filteredItems.map((item, index) => (
                         <li
                           key={item.id}
@@ -387,11 +406,7 @@ const SearchableDropdown = ({
                           onClick={() => handleSelect(item)}
                           onMouseEnter={() => setHighlightedIndex(index)}
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">
-                              {item?.[labelKey]}
-                            </span>
-                          </div>
+                          {item?.[labelKey]}
                         </li>
                       ))
                     ) : (

@@ -10,4 +10,7 @@ contextBridge.exposeInMainWorld("api", {
   getBillingDetails: (args) => ipcRenderer.invoke("get-billing-details", args),
   openPreview: () => ipcRenderer.invoke("open-print-preview"),
   confirmPrint: (data) => ipcRenderer.invoke("confirm-print", data),
+  addBilling: (billData) => ipcRenderer.invoke("add-billing", billData),
+  searchCustomers: (searchTerm) =>
+    ipcRenderer.invoke("search-customers", searchTerm),
 });

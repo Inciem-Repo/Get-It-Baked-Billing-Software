@@ -1,8 +1,8 @@
 import { ipcMain, BrowserWindow } from "electron";
 import { loginUser } from "./service/authService.js";
-import { clearUser, getCustomers, getUser } from "./service/userService.js";
+import { clearUser, getCustomers, getUser, searchCustomers } from "./service/userService.js";
 import { getProductsDetails } from "./service/produtsService.js";
-import { getBillingDetails } from "./service/billingService.js";
+import { addBilling, getBillingDetails } from "./service/billingService.js";
 import pkg from "electron-pos-printer";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -22,12 +22,24 @@ ipcMain.handle("get-user", async () => getUser());
 ipcMain.handle("clear-user", async () => clearUser());
 ipcMain.handle("get-products", async () => getProductsDetails());
 ipcMain.handle("get-customers", async () => getCustomers());
+ipcMain.handle("search-customers", async (event, searchTerm = "") => {
+  return searchCustomers(searchTerm);
+});
 ipcMain.handle("get-billing-details", async (event, args = {}) => {
   const { page = 1, limit = 10, filters = {} } = args;
   return getBillingDetails(page, limit, filters);
 });
 
-// Dummy bill data
+ipcMain.handle("add-billing", async (event, billData) => {
+  try {
+    const billId = addBilling(billData);
+    return { success: true, billId };
+  } catch (err) {
+    console.error("Error inserting billing:", err);
+    return { success: false, error: err.message };
+  }
+});
+
 const dummyBill = {
   shopName: "BAKED",
   address:
@@ -71,18 +83,13 @@ ipcMain.handle("print-bill", async (event, billData) => {
   let tempFilePath;
   try {
     const billHTML = generateBillHTML(dummyBill);
-
-    // Create a temporary HTML file
     tempFilePath = path.join(os.tmpdir(), `bill-${Date.now()}.html`);
     await fs.writeFile(tempFilePath, billHTML, "utf8");
-
-    // Use the temporary file path in the print options
     await PosPrinter.print(billData, {
-      // The data here is not used, but is a required parameter
-      preview: false, // Set to true for a preview window
+      preview: false,
       width: "80mm",
-      printerName: "", // Add your printer name
-      silent: true, // For silent printing
+      printerName: "",
+      silent: true,
       pathTemplate: tempFilePath,
     });
 
@@ -91,7 +98,6 @@ ipcMain.handle("print-bill", async (event, billData) => {
     console.error("❌ Print error:", err);
     throw err;
   } finally {
-    // Clean up the temporary file
     if (tempFilePath) {
       try {
         await fs.unlink(tempFilePath);

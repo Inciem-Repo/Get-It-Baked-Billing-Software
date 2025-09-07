@@ -1,6 +1,6 @@
 import Store from "electron-store";
 import { getMySqlConnection } from "../db/mysqlClient.js";
-import { buildSelectQuery } from "../lib/db/buildQueries.js";
+import { buildSearchQuery, buildSelectQuery } from "../lib/db/buildQueries.js";
 import db from "../db/dbSetup.js";
 
 const store = new Store({ name: "user-session" });
@@ -49,5 +49,16 @@ export function getCustomers() {
     return rows;
   } catch (error) {
     return error;
+  }
+}
+
+export function searchCustomers(searchTerm = "") {
+  try {
+    const query = buildSearchQuery("customers", "name", searchTerm);
+    const rows = db.prepare(query).all();
+    return rows;
+  } catch (error) {
+    console.error("Customer search error:", error);
+    return [];
   }
 }
