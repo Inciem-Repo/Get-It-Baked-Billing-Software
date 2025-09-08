@@ -9,8 +9,13 @@ import { getCustomersInfo } from "../service/userService";
 import { saveBillingInfo } from "../service/billingService";
 import NumberInput from "../components/common/NumberInput";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
+import { generateInvoiceNo, mapBillForPrint } from "../lib/helper";
+import { useNavigate } from "react-router-dom";
 
 const POS = () => {
+  const { branchInfo } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState([
     {
       id: 1,
@@ -32,13 +37,12 @@ const POS = () => {
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [products, setProducts] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const paymentSelectRef = useRef(null);
-  const lastF4TimeRef = useRef(0);
+  const [bill, setBill] = useState(null);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
-    invoiceNo: "INV-" + Math.floor(Math.random() * 10000),
+    invoiceNo: generateInvoiceNo(branchInfo.id),
     customer: "Walking Customer",
     customerNote: "",
     amount: 0,
@@ -49,32 +53,30 @@ const POS = () => {
     advanceAmount: 0,
     paymentType: "",
   });
-
-  useEffect(() => {
-    const updatedItems = items.map((item) => {
-      const taxableValue = item.unitPrice * item.quantity;
-      const cgstAmount = taxableValue * (item.cgstRate / 100);
-      const igstAmount = taxableValue * (item.igstRate / 100);
-      const total = taxableValue + cgstAmount + igstAmount;
-
-      return {
-        ...item,
-        taxableValue,
-        cgstAmount,
-        igstAmount,
-        total,
-      };
+  const resetBillingForm = () => {
+    setItems([]);
+    setFormData({
+      date: new Date().toISOString().split("T")[0],
+      invoiceNo: generateInvoiceNo(branchInfo.id),
+      customer: "Walking Customer",
+      customerId: 0,
+      customerNote: "",
+      amount: 0,
+      amountReceived: 0,
+      balanceToCustomer: 0,
+      balanceAmount: 0,
+      discount: 0,
+      advanceAmount: 0,
+      paymentType: "",
     });
+    setBill(null);
+    setSelectedCustomer(null);
+    setSelectedCustomer({
+      id: 0,
+      name: "Walking Customer",
+    });
+  };
 
-    setItems(updatedItems);
-  }, [
-    items
-      .map(
-        (item) =>
-          `${item.unitPrice}-${item.quantity}-${item.cgstRate}-${item.igstRate}`
-      )
-      .join(),
-  ]);
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "F2") {
@@ -142,7 +144,21 @@ const POS = () => {
 
   const updateItem = (id, field, value) => {
     setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      prev.map((item) => {
+        if (item.id !== id) return item;
+
+        const updatedItem = { ...item, [field]: value };
+
+        // Recalculate totals based on quantity change
+        const totalTax = updatedItem.cgstRate + updatedItem.igstRate;
+        const taxableValue =
+          (updatedItem.unitPrice / (1 + totalTax / 100)) * updatedItem.quantity;
+        const cgstAmount = (taxableValue * updatedItem.cgstRate) / 100;
+        const igstAmount = (taxableValue * updatedItem.igstRate) / 100;
+        const total = taxableValue + cgstAmount + igstAmount;
+
+        return { ...updatedItem, taxableValue, cgstAmount, igstAmount, total };
+      })
     );
   };
 
@@ -191,7 +207,20 @@ const POS = () => {
     setSelectedCustomer(customer);
   };
 
+
   const handleProductSelect = (id, product) => {
+    const totalTax = parseFloat(product.tax) || 0;
+    const cgstRate = totalTax / 2;
+    const igstRate = totalTax / 2;
+
+    const unitPrice = product.price || 0;
+    const taxableValue = unitPrice / (1 + totalTax / 100);
+
+    const cgstAmount = (taxableValue * cgstRate) / 100;
+    const igstAmount = (taxableValue * igstRate) / 100;
+
+    const total = taxableValue + cgstAmount + igstAmount;
+
     setItems((prev) =>
       prev.map((row) =>
         row.id === id
@@ -199,16 +228,14 @@ const POS = () => {
               ...row,
               productId: product.id,
               productName: product.title,
-              unitPrice: product.price || 0,
+              unitPrice,
               quantity: row.quantity || 1,
-              cgstRate: parseFloat(product.tax) / 2 || 0,
-              cgstAmount:
-                ((parseFloat(product.tax) / 2) * (product.price || 0)) / 100,
-              igstRate: parseFloat(product.tax) || 0,
-              igstAmount:
-                ((parseFloat(product.tax) || 0) * (product.price || 0)) / 100,
-              taxableValue: product.price || 0,
-              total: (product.price || 0) * (row.quantity || 1),
+              cgstRate,
+              cgstAmount,
+              igstRate,
+              igstAmount,
+              taxableValue,
+              total,
               unit: product.unit || "",
             }
           : row
@@ -216,38 +243,7 @@ const POS = () => {
     );
   };
 
-  const [bill, setBill] = useState(null);
-
-  const handlePrint = async (bill) => {
-    const success = await window.api.printBill(bill);
-    console.log(success);
-    if (success) {
-      console.log("Bill printed successfully!");
-    } else {
-      console.error("Failed to print bill.");
-    }
-  };
-
-  // const handleSave = () => {
-  //   const updatedFormData = {
-  //     ...formData,
-  //     customer: selectedCustomer?.name || formData.customer,
-  //     customerId: selectedCustomer?.id || null,
-  //     amount: items.reduce((sum, i) => sum + i.total, 0),
-  //   };
-
-  //   const newBill = {
-  //     ...updatedFormData,
-  //     items,
-  //   };
-  //   console.log(newBill);
-  //   setFormData(updatedFormData);
-  //   setBill(newBill);
-  // };
-
-  // ...
-
-  const handleSave = async () => {
+  const handleSave = async (type) => {
     if (!items || items.length === 0 || !items.some((i) => i.productId)) {
       toast.error("⚠️ Please add at least one item before saving.");
       return;
@@ -268,38 +264,43 @@ const POS = () => {
       balanceAmount: Number(totals.balanceAmount.toFixed(2)),
     };
 
-    const newBill = {
-      ...updatedFormData,
-      items,
-    };
+    const newBill = { ...updatedFormData, items };
     setFormData(updatedFormData);
     setBill(newBill);
-    console.log(newBill);
+
     try {
       const result = await saveBillingInfo(newBill);
-      toast.success("Bill saved successfully");
-      console.log(result);
+      if (!result.success) {
+        toast.error("Error: " + result.error);
+        return;
+      }
+
+      const savedBill = result.bill;
+
+      switch (type) {
+        case "save":
+          toast.success("Bill saved successfully");
+          resetBillingForm();
+          break;
+
+        case "saveAndPrint": {
+          const printableBill = mapBillForPrint(savedBill, branchInfo);
+          await window.api.openPrintPreview(printableBill);
+          break;
+        }
+
+        case "saveAndList":
+          toast.success("Bill saved successfully");
+          navigate("/billing-history");
+          break;
+
+        default:
+          console.warn("Unknown save type:", type);
+      }
     } catch (error) {
-      console.log(error);
+      console.error("Save error:", error);
+      toast.error(" Something went wrong while saving the bill.");
     }
-    // window.api.openPreview();
-  };
-
-  const handleSaveAndPrint = () => {
-    const updatedFormData = {
-      ...formData,
-      customer: selectedCustomer?.name || formData.customer,
-      customerId: selectedCustomer?.id || null,
-      amount: items.reduce((sum, i) => sum + i.total, 0),
-    };
-
-    const newBill = {
-      ...updatedFormData,
-      items,
-    };
-
-    setFormData(updatedFormData);
-    setBill(newBill);
   };
 
   return (
@@ -615,17 +616,20 @@ const POS = () => {
           <div className="flex space-x-2">
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              onClick={handleSave}
+              onClick={() => handleSave("save")}
             >
               Save Details
             </button>
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              onClick={handleSaveAndPrint}
+              onClick={() => handleSave("saveAndPrint")}
             >
               Save & Print
             </button>
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+            <button
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              onClick={() => handleSave("saveAndList")}
+            >
               Save & List
             </button>
           </div>

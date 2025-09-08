@@ -191,7 +191,9 @@ const BillingHistory = () => {
                     {bill.invid}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-900 border-r">
-                    {bill.customer_name}
+                    {bill.customer_id != 0
+                      ? bill.customer_name
+                      : "Walking Customer"}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-900 border-r">
                     {bill?.customer_mobile ? bill.customer_mobile : "-"}

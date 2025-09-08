@@ -12,10 +12,9 @@ export const saveBillingInfo = async (billData) => {
   try {
     const result = await window.api.addBilling(billData);
     if (result.success) {
-      console.log("Bill saved successfully, ID:", result.billId);
       return result;
     } else {
-      console.error("Failed to save bill:", result.error);
+      console.error("Failed to save bill:", result.error);  
       return { success: false, message: result.error };
     }
   } catch (error) {

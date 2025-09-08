@@ -40,9 +40,7 @@ export function addBilling(billData) {
     advanceamount: billData.advanceAmount || 0,
     balanceAmount: billData.balanceToCustomer || 0,
   };
-
   console.log(billData);
-
   const { query: billingQuery, values: billingValues } =
     buildInsertOrIgnoreQuery("billing", billingData);
 

@@ -1,6 +1,11 @@
 import { ipcMain, BrowserWindow } from "electron";
 import { loginUser } from "./service/authService.js";
-import { clearUser, getCustomers, getUser, searchCustomers } from "./service/userService.js";
+import {
+  clearUser,
+  getCustomers,
+  getUser,
+  searchCustomers,
+} from "./service/userService.js";
 import { getProductsDetails } from "./service/produtsService.js";
 import { addBilling, getBillingDetails } from "./service/billingService.js";
 import pkg from "electron-pos-printer";
@@ -33,36 +38,36 @@ ipcMain.handle("get-billing-details", async (event, args = {}) => {
 ipcMain.handle("add-billing", async (event, billData) => {
   try {
     const billId = addBilling(billData);
-    return { success: true, billId };
+    const savedBill = { ...billData, id: billId };
+    return { success: true, bill: savedBill };
   } catch (err) {
     console.error("Error inserting billing:", err);
     return { success: false, error: err.message };
   }
 });
 
-const dummyBill = {
-  shopName: "BAKED",
-  address:
-    "Changampuzha park Metro station, Devankulangara, Mamangalam, Edappally, Eranakulam, Kerala, Pin:682024",
-  date: "03 Sep, 2025 10:58 AM",
-  invoice: "INVC14-01838",
-  customer: "Walking Customer",
-  gstNo: "32CQWPP4392J1Z2",
-  items: [
-    { name: "Candle @ 10", qty: 8, price: 8.48, taxPercent: 18 },
-    { name: "Chocolate Cake", qty: 1, price: 250.0, taxPercent: 12 },
-  ],
-  totals: {
-    taxableValue: 267.8,
-    totalCGST: 15.0,
-    totalSGST: 15.0,
-    grandTotal: 297.8,
-    netTotal: 297.8,
-  },
-};
+// ipcMain.handle("open-print-preview", async (event, billData) => {
+//   const previewWindow = new BrowserWindow({
+//     width: 450,
+//     height: 700,
+//     modal: true,
+//     parent: BrowserWindow.getFocusedWindow(),
+//     webPreferences: {
+//       contextIsolation: false,
+//       nodeIntegration: true,
+//     },
+//   });
+
+//   const html = generateBillHTML(billData);
+//   previewWindow.loadURL(
+//     "data:text/html;charset=utf-8," + encodeURIComponent(html)
+//   );
+// });
+
+// let previewWindow;
 
 ipcMain.handle("open-print-preview", async (event, billData) => {
-  const previewWindow = new BrowserWindow({
+  previewWindow = new BrowserWindow({
     width: 450,
     height: 700,
     modal: true,
@@ -73,37 +78,46 @@ ipcMain.handle("open-print-preview", async (event, billData) => {
     },
   });
 
-  const html = generateBillHTML(dummyBill);
+  const html = generateBillHTML(billData);
   previewWindow.loadURL(
     "data:text/html;charset=utf-8," + encodeURIComponent(html)
   );
 });
 
-ipcMain.handle("print-bill", async (event, billData) => {
-  let tempFilePath;
-  try {
-    const billHTML = generateBillHTML(dummyBill);
-    tempFilePath = path.join(os.tmpdir(), `bill-${Date.now()}.html`);
-    await fs.writeFile(tempFilePath, billHTML, "utf8");
-    await PosPrinter.print(billData, {
-      preview: false,
-      width: "80mm",
-      printerName: "",
-      silent: true,
-      pathTemplate: tempFilePath,
-    });
-
-    return true;
-  } catch (err) {
-    console.error("❌ Print error:", err);
-    throw err;
-  } finally {
-    if (tempFilePath) {
-      try {
-        await fs.unlink(tempFilePath);
-      } catch (cleanupErr) {
-        console.error("Failed to clean up temp file:", cleanupErr);
+ipcMain.handle("print-bill", () => {
+  if (previewWindow && !previewWindow.isDestroyed()) {
+    previewWindow.webContents.print(
+      { silent: false, printBackground: true },
+      (success, failureReason) => {
+        if (!success) console.error("Print failed:", failureReason);
+        previewWindow.close();
+        previewWindow = null;
       }
-    }
+    );
   }
 });
+
+// ipcMain.handle("print-bill", async (event, billData) => {
+//   const billHTML = generateBillHTML(billData);
+
+//   const printWindow = new BrowserWindow({
+//     width: 400,
+//     height: 600,
+//     show: true,
+//   });
+
+//   // Load HTML directly
+//   printWindow.loadURL(
+//     "data:text/html;charset=utf-8," + encodeURIComponent(billHTML)
+//   );
+
+//   printWindow.webContents.on("did-finish-load", () => {
+//     printWindow.webContents.print(
+//       { silent: false, printBackground: true },
+//       (success, failureReason) => {
+//         if (!success) console.error("Print failed:", failureReason);
+//         printWindow.close();
+//       }
+//     );
+//   });
+// });

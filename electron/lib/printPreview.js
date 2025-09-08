@@ -172,12 +172,10 @@ export function generateBillHTML(bill) {
             <tr class="item-row">
               <td>${i + 1}</td>
               <td>${item.name}</td>
-              <td class="right">${item.price?.toFixed(2) || "0.00"}</td>
+              <td class="right">${item.price || "0.00"}</td>
               <td class="right">${item.qty || 1}</td>
               <td class="right">${item.taxPercent || 18}</td>
-              <td class="right">${((item.qty || 1) * (item.price || 0)).toFixed(
-                2
-              )}</td>
+              <td class="right">${(item.qty || 1) * (item.price || 0)}</td>
             </tr>
           `
               )
@@ -201,23 +199,23 @@ export function generateBillHTML(bill) {
       <div class="totals">
         <div class="total-row">
           <span>Taxable Value:</span>
-          <span>${bill.totals?.taxableValue?.toFixed(2) || "8.47"}</span>
+          <span>${bill.totals?.taxableValue || "8.47"}</span>
         </div>
         <div class="total-row">
           <span>Total CGST:</span>
-          <span>${bill.totals?.totalCGST?.toFixed(2) || "0.76"}</span>
+          <span>${bill.totals?.totalCGST || "0.76"}</span>
         </div>
         <div class="total-row">
           <span>Total SGST:</span>
-          <span>${bill.totals?.totalSGST?.toFixed(2) || "0.76"}</span>
+          <span>${bill.totals?.totalSGST || "0.76"}</span>
         </div>
         <div class="total-row">
           <span>Grand Total:</span>
-          <span>${bill.totals?.grandTotal?.toFixed(2) || "10.00"}</span>
+          <span>${bill.totals?.grandTotal || "10.00"}</span>
         </div>
         <div class="total-row final">
           <span>Net Total:</span>
-          <span>${bill.totals?.netTotal?.toFixed(2) || "10.00"}</span>
+          <span>${bill.totals?.netTotal || "10.00"}</span>
         </div>
       </div>
       
