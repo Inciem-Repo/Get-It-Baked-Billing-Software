@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Package, Receipt, History, Menu } from "lucide-react";
 import bakedLogo from "../../assets/images/baked-logo.png";
-import { menuItems } from "../../constance/menu";
+import { menuItems } from "../../constance/menu.js";
 
 const Sidebar = ({ activeView, isCollapsed, onToggleCollapse }) => {
   const navigate = useNavigate();

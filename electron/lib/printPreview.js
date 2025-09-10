@@ -8,7 +8,7 @@ export function generateBillHTML(bill) {
           padding: 20px; 
           font-size: 12px; 
           line-height: 1.2;
-          max-width: 300px;
+          max-width: 250px;
           margin: 0 auto;
         }
         .header {
@@ -110,6 +110,11 @@ export function generateBillHTML(bill) {
           text-align: center;
           font-size: 11px;
         }
+           @media print {
+    .buttons {
+      display: none !important;
+    }
+  }
       </style>
     </head>
     <body>
@@ -135,7 +140,7 @@ export function generateBillHTML(bill) {
           <span class="label">Date :</span>
           <span class="value">${
             bill.date || new Date().toLocaleDateString("en-IN")
-          } ${new Date().toLocaleTimeString("en-IN", { hour12: true })}</span>
+          } </span>
         </div>
         <div class="bill-info-row">
           <span class="label">Invoice NO :</span>

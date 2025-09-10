@@ -3,7 +3,7 @@ import { getMySqlConnection } from "../db/mysqlClient.js";
 import {
   buildInsertOrIgnoreQuery,
   buildSelectQuery,
-} from "../lib/db/buildQueries.js";
+} from "../lib/buildQueries.js";
 import { md5 } from "../lib/helper.js";
 import { syncTable } from "./syncService.js";
 import { saveUser } from "./userService.js";
@@ -46,7 +46,6 @@ export async function loginUser(username, password) {
         null,
         "branch_id"
       );
-      console.log(billingRecords);
       const billIds = billingRecords.map((bill) => bill.id);
 
       // 3. Sync billing_items table (live: table_details) by bill_ids

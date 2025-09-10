@@ -109,3 +109,37 @@ export function buildSearchQuery(table, searchKey, searchTerm) {
     " LIMIT 50"
   );
 }
+
+export function buildUpsertQuery(table, data) {
+  const columns = Object.keys(data).join(", ");
+  const placeholders = Object.keys(data)
+    .map(() => "?")
+    .join(", ");
+  const values = Object.values(data);
+
+  const updateClause = Object.keys(data)
+    .map((col) => `${col} = VALUES(${col})`)
+    .join(", ");
+
+  return {
+    query: `INSERT INTO ${table} (${columns}) VALUES (${placeholders})
+            ON DUPLICATE KEY UPDATE ${updateClause}`,
+    values,
+  };
+}
+
+export function buildGrandTotalQuery(filters = {}) {
+  let query = "SELECT SUM(grandTotalf) as totalAmount FROM billing b WHERE 1=1";
+
+  if (filters.paymenttype) {
+    query += ` AND b.paymenttype='${filters.paymenttype}'`;
+  }
+  if (filters.fromDate) {
+    query += ` AND DATE(b.billdate) >= '${filters.fromDate}'`;
+  }
+  if (filters.toDate) {
+    query += ` AND DATE(b.billdate) <= '${filters.toDate}'`;
+  }
+
+  return query;
+}

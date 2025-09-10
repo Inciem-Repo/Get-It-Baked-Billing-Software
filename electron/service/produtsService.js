@@ -1,5 +1,5 @@
 import db from "../db/dbSetup.js";
-import { buildSelectQuery } from "../lib/db/buildQueries.js";
+import { buildSelectQuery } from "../lib/buildQueries.js";
 
 export function getProductsDetails() {
   try {

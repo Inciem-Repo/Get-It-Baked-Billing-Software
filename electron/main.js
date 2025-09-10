@@ -16,6 +16,11 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: true,
     },
+    icon: path.join(
+      app.isPackaged ? process.resourcesPath : __dirname,
+      "public",
+      "baked-logo.ico"
+    ),
   });
 
   const startUrl =
@@ -28,9 +33,9 @@ function createWindow() {
 app.whenReady().then(async () => {
   createWindow();
   try {
-    // await syncTable("category");
-    // await syncTable("products");
-    // await syncTable("customers");
+    await syncTable("category");
+    await syncTable("products");
+    await syncTable("customers");
   } catch (error) {
     console.log(error);
   }

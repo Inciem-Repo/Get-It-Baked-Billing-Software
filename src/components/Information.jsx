@@ -1,34 +1,8 @@
 import { X, Info } from "lucide-react";
 import React from "react";
+import { infoPoints } from "../constance/info";
 
 function Information({ setShowInfoModal }) {
-  const infoPoints = [
-    {
-      id: 1,
-      text: "To select an item from Table use",
-      key: "F1",
-      description: "tab - The popup will open accordingly from last row",
-    },
-    {
-      id: 2,
-      text: "Press",
-      key: "Ctrl + S",
-      description: "to save your current work",
-    },
-    {
-      id: 3,
-      text: "Use",
-      key: "Escape",
-      description: "to close any open dialog or modal",
-    },
-    {
-      id: 4,
-      text: "Press",
-      key: "Ctrl + F",
-      description: "to open search functionality",
-    },
-  ];
-
   return (
     <div className="bg-blue-50 rounded-lg p-6 border border-blue-200 w-full">
       <div className="flex justify-between items-center mb-2">

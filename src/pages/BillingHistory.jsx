@@ -1,36 +1,45 @@
 import React, { useEffect, useState } from "react";
 import { Calendar, Eye } from "lucide-react";
 import Header from "../components/layout/header";
-import { getBillingInfo } from "../service/billingService";
+import {
+  getAllBillHistory,
+  getBillingInfo,
+  getBillingInvoice,
+} from "../service/billingService";
+import { useAuth } from "../context/AuthContext";
+import * as XLSX from "xlsx";
+import toast from "react-hot-toast";
 
 const BillingHistory = () => {
+  const { branchInfo } = useAuth();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [activeTab, setActiveTab] = useState("online");
+  const [activeTab, setActiveTab] = useState("all");
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [bills, setBills] = useState([]);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [grandTotal, setGrandTotal] = useState(false);
 
   useEffect(() => {
     async function fetchBilling() {
-      const filters = {
-        paymenttype: activeTab === "online" ? "Online" : "Cash",
-      };
+      const filters = {};
+
+      if (activeTab !== "all") {
+        filters.paymenttype = activeTab === "online" ? "Online" : "Cash";
+      }
 
       if (fromDate) filters.fromDate = fromDate;
       if (toDate) filters.toDate = toDate;
 
-      const response = await getBillingInfo(currentPage, itemsPerPage, {
-        paymenttype: activeTab === "online" ? "Online" : "Cash",
-        fromDate,
-        toDate,
-      });
-      console.log(response);
+      const response = await getBillingInfo(currentPage, itemsPerPage, filters);
+
       if (response && response.rows) {
         setBills(response.rows);
         setTotalRecords(response.total);
+        setGrandTotal(response.grandTotal);
       }
     }
     fetchBilling();
@@ -46,6 +55,42 @@ const BillingHistory = () => {
     setCurrentPage(1);
     setShowTypeDropdown(false);
   };
+
+  const handleViewInvoice = async (billId) => {
+    try {
+      await getBillingInvoice(billId, branchInfo);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  async function exportToExcel(data, fileName = "bill_history.xlsx") {
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Bill History");
+    XLSX.writeFile(workbook, fileName);
+  }
+
+  async function handleExport() {
+    try {
+      setLoading(true);
+      const allBills = await getAllBillHistory();
+
+      const formatted = allBills.map((row) => ({
+        "Invoice No": row.invid,
+        Customer: row.customer_name || "Walking Customer",
+        Date: row.billdate,
+        "Total Amount": row.grandTotalf,
+        "Payment Type": row.paymenttype,
+      }));
+
+      await exportToExcel(formatted);
+      toast.success("Exported sucessfuly");
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
@@ -108,6 +153,18 @@ const BillingHistory = () => {
                 <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-full">
                   <button
                     onClick={() => {
+                      handleTabChange("all");
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 ${
+                      activeTab === "online"
+                        ? "bg-blue-50 text-blue-600 font-medium"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => {
                       handleTabChange("cash");
                     }}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b ${
@@ -144,8 +201,42 @@ const BillingHistory = () => {
               Reset
             </button>
           </div>
-          <button className="bg-green-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors font-medium">
-            Export Report
+          <button
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700 text-white"
+            }`}
+            onClick={handleExport}
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  />
+                </svg>
+                Exporting...
+              </span>
+            ) : (
+              "Export Report"
+            )}
           </button>
         </div>
       </div>
@@ -208,7 +299,10 @@ const BillingHistory = () => {
                     {bill.billdate}
                   </td>
                   <td className="px-4 py-4 text-sm">
-                    <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors">
+                    <button
+                      className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                      onClick={() => handleViewInvoice(bill.id, branchInfo)}
+                    >
                       View Invoice
                     </button>
                   </td>
@@ -218,6 +312,24 @@ const BillingHistory = () => {
           </table>
         </div>
 
+        <div className="bg-gray-100 border-t-2 border-gray-300">
+          <div className="px-4 py-4 flex justify-between items-center">
+            <div className="flex items-center space-x-1">
+              <span className="text-sm font-semibold text-gray-700">
+                Total Records
+              </span>
+              <span className="text-sm text-gray-600">({activeTab})</span>
+            </div>
+            <div className="text-right">
+              <span className="text-sm font-medium text-gray-700 mr-4">
+                Total Amount:
+              </span>
+              <span className="text-lg font-bold text-gray-900">
+                ₹{grandTotal}
+              </span>
+            </div>
+          </div>
+        </div>
         {currentBills.length === 0 && bills.length === 0 && (
           <div className="text-center py-8">
             <p className="text-gray-500">
@@ -226,7 +338,6 @@ const BillingHistory = () => {
           </div>
         )}
 
-        {/* Pagination */}
         {bills.length > 0 && (
           <div className="bg-gray-50 px-6 py-4 border-t flex items-center justify-between">
             <div className="text-sm text-gray-700">

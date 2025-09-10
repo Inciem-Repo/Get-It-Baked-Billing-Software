@@ -6,12 +6,16 @@ import SearchableDropdown from "../components/common/SearchableDropdown";
 import { useReactToPrint } from "react-to-print";
 import BillPrint from "./BillPrint";
 import { getCustomersInfo } from "../service/userService";
-import { saveBillingInfo } from "../service/billingService";
+import {
+  handleGenerateInvoice,
+  saveBillingInfo,
+} from "../service/billingService";
 import NumberInput from "../components/common/NumberInput";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { generateInvoiceNo, mapBillForPrint } from "../lib/helper";
+import { mapBillForPrint } from "../lib/helper";
 import { useNavigate } from "react-router-dom";
+import AddCustomerModal from "../components/AddCustomerModal";
 
 const POS = () => {
   const { branchInfo } = useAuth();
@@ -39,10 +43,10 @@ const POS = () => {
   const [products, setProducts] = useState([]);
   const paymentSelectRef = useRef(null);
   const [bill, setBill] = useState(null);
-
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
-    invoiceNo: generateInvoiceNo(branchInfo.id),
+    invoiceNo: "",
     customer: "Walking Customer",
     customerNote: "",
     amount: 0,
@@ -53,11 +57,25 @@ const POS = () => {
     advanceAmount: 0,
     paymentType: "",
   });
-  const resetBillingForm = () => {
-    setItems([]);
+  const resetBillingForm = async () => {
+    setItems([
+      {
+        id: 0,
+        item: "",
+        unitPrice: 0,
+        quantity: 1,
+        unit: "",
+        taxableValue: 0,
+        cgstRate: 0,
+        cgstAmount: 0,
+        igstRate: 0,
+        igstAmount: 0,
+        total: 0,
+      },
+    ]);
     setFormData({
       date: new Date().toISOString().split("T")[0],
-      invoiceNo: generateInvoiceNo(branchInfo.id),
+      invoiceNo: await handleGenerateInvoice(branchInfo.id),
       customer: "Walking Customer",
       customerId: 0,
       customerNote: "",
@@ -83,6 +101,10 @@ const POS = () => {
         e.preventDefault();
         addNewRow();
       }
+      if (e.key === "F3") {
+        e.preventDefault();
+        handleF3Click();
+      }
 
       // Step 1: F4 focuses the select
       if (e.key === "F4") {
@@ -107,6 +129,13 @@ const POS = () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [items]);
+  useEffect(() => {
+    const fetchInvoice = async () => {
+      const invoice = await handleGenerateInvoice(branchInfo.id);
+      setFormData((prev) => ({ ...prev, invoiceNo: invoice }));
+    };
+    fetchInvoice();
+  }, [branchInfo.id]);
 
   useEffect(() => {
     const initTotals = calculateTotals();
@@ -161,6 +190,23 @@ const POS = () => {
       })
     );
   };
+  const handleF3Click = () => {
+    setShowAddCustomerModal(true);
+  };
+  const handleAddCustomer = async (customer) => {
+    const payload = {
+      ...customer,
+      branch_id: branchInfo.id,
+    };
+
+    const result = await window.api.addCustomer(payload);
+
+    if (result.success) {
+      toast.success("Customer added ");
+    } else {
+      toast.error("Failed to add:");
+    }
+  };
 
   const calculateTotals = () => {
     const totalTaxableValue = items.reduce(
@@ -206,7 +252,6 @@ const POS = () => {
   const handleCustomerSelect = (customer) => {
     setSelectedCustomer(customer);
   };
-
 
   const handleProductSelect = (id, product) => {
     const totalTax = parseFloat(product.tax) || 0;
@@ -286,11 +331,13 @@ const POS = () => {
         case "saveAndPrint": {
           const printableBill = mapBillForPrint(savedBill, branchInfo);
           await window.api.openPrintPreview(printableBill);
+          resetBillingForm();
           break;
         }
 
         case "saveAndList":
           toast.success("Bill saved successfully");
+          resetBillingForm();
           navigate("/billing-history");
           break;
 
@@ -340,17 +387,28 @@ const POS = () => {
             />
           </div>
           <div>
-            <SearchableDropdown
-              placeholder="Search and select customer..."
-              label="Customer"
-              shortcut={{ key: "Enter", shift: true }}
-              onSelect={handleCustomerSelect}
-              value={selectedCustomer}
-              labelKey="name"
-              fetchItems={async (searchTerm) => {
-                return await getCustomersInfo(searchTerm);
-              }}
-            />
+            <div className="flex gap-2">
+              <SearchableDropdown
+                placeholder="Search and select customer..."
+                label="Customer"
+                shortcut={{ key: "Enter", shift: true }}
+                onSelect={handleCustomerSelect}
+                value={selectedCustomer}
+                labelKey="name"
+                fetchItems={async (searchTerm) => {
+                  return await getCustomersInfo(searchTerm);
+                }}
+              />
+              <div className="">
+                <label className="block p-[10px] text-sm font-medium text-gray-700 mb-1" />
+                <button
+                  className="px-4 py-2 rounded-md bg-blue-600 text-white hover:cursor-pointer"
+                  onClick={() => handleF3Click()}
+                >
+                  F3
+                </button>
+              </div>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -635,6 +693,11 @@ const POS = () => {
           </div>
         </div>
       </div>
+      <AddCustomerModal
+        isOpen={showAddCustomerModal}
+        onClose={() => setShowAddCustomerModal(false)}
+        onAddCustomer={handleAddCustomer}
+      />
     </div>
   );
 };

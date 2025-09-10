@@ -348,7 +348,7 @@ const SearchableDropdown = ({
             }
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setSelectedItem(null); // ✅ clear selection when typing
+              setSelectedItem(null);
               setHighlightedIndex(e.target.value ? 0 : -1);
               if (!isOpen) {
                 closeOtherDropdowns();

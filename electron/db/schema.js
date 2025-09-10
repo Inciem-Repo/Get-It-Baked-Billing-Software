@@ -17,7 +17,8 @@ export const createTables = [
     customernote TEXT,
     advanceamount TEXT,
     balanceAmount TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    synced INTEGER DEFAULT 1 
 );`,
   `
 CREATE TABLE IF NOT EXISTS branches (
@@ -77,7 +78,8 @@ CREATE TABLE IF NOT EXISTS branches (
     shipping_address TEXT,
     shipping_city TEXT,
     shipping_postal_code TEXT,
-    date TEXT
+    date TEXT,
+    synced INTEGER DEFAULT 1 
 )`,
   `CREATE TABLE IF NOT EXISTS billing_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,4 +92,8 @@ CREATE TABLE IF NOT EXISTS branches (
     igst_value REAL,
     total_price REAL NOT NULL
 )`,
+`CREATE TABLE IF NOT EXISTS sync_meta (
+  table_name TEXT PRIMARY KEY,
+  last_sync_at TEXT
+);`
 ];
