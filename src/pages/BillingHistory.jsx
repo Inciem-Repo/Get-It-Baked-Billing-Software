@@ -7,8 +7,9 @@ import {
   getBillingInvoice,
 } from "../service/billingService";
 import { useAuth } from "../context/AuthContext";
-import * as XLSX from "xlsx";
+
 import toast from "react-hot-toast";
+import { exportToExcel } from "../lib/helper";
 
 const BillingHistory = () => {
   const { branchInfo } = useAuth();
@@ -35,7 +36,6 @@ const BillingHistory = () => {
       if (toDate) filters.toDate = toDate;
 
       const response = await getBillingInfo(currentPage, itemsPerPage, filters);
-
       if (response && response.rows) {
         setBills(response.rows);
         setTotalRecords(response.total);
@@ -63,30 +63,49 @@ const BillingHistory = () => {
       console.log(error);
     }
   };
-  async function exportToExcel(data, fileName = "bill_history.xlsx") {
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Bill History");
-    XLSX.writeFile(workbook, fileName);
-  }
 
   async function handleExport() {
     try {
       setLoading(true);
-      const allBills = await getAllBillHistory();
 
-      const formatted = allBills.map((row) => ({
+      const allBills = await getBillingInfo(1, 0, {
+        paymenttype:
+          activeTab !== "all"
+            ? activeTab === "online"
+              ? "Online"
+              : "Cash"
+            : null,
+        fromDate,
+        toDate,
+      });
+
+      const formatted = (allBills.rows || []).map((row) => ({
         "Invoice No": row.invid,
         Customer: row.customer_name || "Walking Customer",
+        "Phone No": row.customer_mobile || "Not Provided",
         Date: row.billdate,
+        "Total Taxable": row.totalTaxableValuef || 0,
+        "Total SGST": row.totalIgstf || 0,
+        "Total CGST": row.totalCgstf || 0,
         "Total Amount": row.grandTotalf,
         "Payment Type": row.paymenttype,
       }));
 
-      await exportToExcel(formatted);
-      toast.success("Exported sucessfuly");
+      if (formatted.length === 0) {
+        toast.error("No bill data to export");
+        return;
+      }
+
+      await exportToExcel(
+        formatted,
+        `Bill_Report_${activeTab}_${
+          new Date().toISOString().split("T")[0]
+        }.xlsx`
+      );
+      toast.success("Exported successfully!");
     } catch (err) {
       console.error("Export failed:", err);
+      toast.error("Export failed");
     } finally {
       setLoading(false);
     }
@@ -195,6 +214,7 @@ const BillingHistory = () => {
                 setFromDate("");
                 setToDate("");
                 setCurrentPage(1);
+                setActiveTab("all");
               }}
               className="bg-blue-500 text-white px-6 py-2 rounded-lg text-sm hover:bg-blue-600 transition-colors font-medium"
             >
@@ -287,11 +307,14 @@ const BillingHistory = () => {
                       : "Walking Customer"}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-900 border-r">
-                    {bill?.customer_mobile ? bill.customer_mobile : "-"}
+                    {bill?.customer_mobile
+                      ? bill.customer_mobile
+                      : "No Provided"}
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-900 border-r">
-                    {bill.customernote || "-"}
+                  <td className="px-4 py-4 text-sm text-gray-900 border-r whitespace-normal break-words max-w-xs">
+                    {bill.customernote || "No Note"}
                   </td>
+
                   <td className="px-4 py-4 text-sm text-gray-900 border-r font-medium">
                     {Number(bill.grandTotalf).toFixed(2)}
                   </td>
@@ -320,12 +343,12 @@ const BillingHistory = () => {
               </span>
               <span className="text-sm text-gray-600">({activeTab})</span>
             </div>
-            <div className="text-right">
-              <span className="text-sm font-medium text-gray-700 mr-4">
-                Total Amount:
+            <div className="">
+              <span className="ml-6 text-sm font-medium text-gray-700 mr-2">
+                Grand Total:
               </span>
-              <span className="text-lg font-bold text-gray-900">
-                ₹{grandTotal}
+              <span className="text-lg font-bold text-green-700">
+                ₹{Number(grandTotal || 0).toFixed(2)}
               </span>
             </div>
           </div>

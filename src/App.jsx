@@ -5,6 +5,9 @@ import POS from "./pages/POS";
 import BillingHistory from "./pages/BillingHistory";
 import Login from "./pages/Login";
 import { useAuth } from "./context/AuthContext";
+import Expense from "./pages/Expense";
+import PaymentReport from "./pages/PaymentReport";
+import SalesReport from "./pages/SalesReport";
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -32,6 +35,9 @@ function App() {
       <Routes>
         <Route path="/" element={<POS />} />
         <Route path="/billing-history" element={<BillingHistory />} />
+        <Route path="/expense" element={<Expense />} />
+        <Route path="/payment-report" element={<PaymentReport />} />
+        <Route path="/sales-report" element={<SalesReport />} />
       </Routes>
     </div>
   );

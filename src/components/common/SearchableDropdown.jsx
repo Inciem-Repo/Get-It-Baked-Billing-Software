@@ -35,7 +35,6 @@ const SearchableDropdown = ({
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
   const [dynamicItems, setDynamicItems] = useState([]);
   const [loading, setLoading] = useState(false);
-
   useEffect(() => {
     if (!fetchItems) return;
 
@@ -178,7 +177,7 @@ const SearchableDropdown = ({
     setSelectedItem(value);
   }, [value]);
   const displayedItems = fetchItems ? dynamicItems : items;
-  const filteredItems = displayedItems.filter((item) =>
+  const filteredItems = displayedItems?.filter((item) =>
     item?.[labelKey]?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -315,16 +314,6 @@ const SearchableDropdown = ({
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {label}
-
-          {/* if you need to show the short cut key for user guid or in the "i" bottom 
-           {shortcut && (
-            <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-              {shortcut.ctrl && "Ctrl + "}
-              {shortcut.alt && "Alt + "}
-              {shortcut.shift && "Shift + "}
-              {shortcut.key?.toUpperCase()}
-            </span>
-          )} */}
         </label>
       )}
 

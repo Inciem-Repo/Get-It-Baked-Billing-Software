@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import "./ipcHandlers.js";
 import { syncTable } from "./service/syncService.js";
+import { initAutoUpdater } from "./service/updateService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,9 @@ function createWindow() {
     `file://${path.join(__dirname, "../dist/index.html")}`;
 
   mainWindow.loadURL(startUrl);
+  mainWindow.once("ready-to-show", () => {
+    initAutoUpdater(mainWindow);
+  });
 }
 
 app.whenReady().then(async () => {
@@ -36,6 +40,7 @@ app.whenReady().then(async () => {
     await syncTable("category");
     await syncTable("products");
     await syncTable("customers");
+    await syncTable("expensecategory");
   } catch (error) {
     console.log(error);
   }
@@ -51,4 +56,7 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+ipcMain.handle("get_app_version", () => {
+  return app.getVersion();
 });

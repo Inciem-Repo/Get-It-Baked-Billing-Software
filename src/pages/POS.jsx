@@ -44,6 +44,7 @@ const POS = () => {
   const paymentSelectRef = useRef(null);
   const [bill, setBill] = useState(null);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const noteRef = useRef(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     invoiceNo: "",
@@ -60,7 +61,7 @@ const POS = () => {
   const resetBillingForm = async () => {
     setItems([
       {
-        id: 0,
+        id: null,
         item: "",
         unitPrice: 0,
         quantity: 1,
@@ -93,6 +94,9 @@ const POS = () => {
       id: 0,
       name: "Walking Customer",
     });
+    if (noteRef.current) {
+      noteRef.current.style.height = "auto";
+    }
   };
 
   useEffect(() => {
@@ -113,14 +117,12 @@ const POS = () => {
           paymentSelectRef.current.focus();
         }
       }
-
-      // Step 2: Enter opens it only if the select is focused
       if (
         e.key === "Enter" &&
         document.activeElement === paymentSelectRef.current
       ) {
         e.preventDefault();
-        paymentSelectRef.current.click(); // this will open the dropdown
+        paymentSelectRef.current.click();
       }
     };
 
@@ -131,11 +133,14 @@ const POS = () => {
   }, [items]);
   useEffect(() => {
     const fetchInvoice = async () => {
-      const invoice = await handleGenerateInvoice(branchInfo.id);
+      const invoice = await handleGenerateInvoice(
+        branchInfo.id,
+        formData.paymentType
+      );
       setFormData((prev) => ({ ...prev, invoiceNo: invoice }));
     };
     fetchInvoice();
-  }, [branchInfo.id]);
+  }, [branchInfo.id, formData.paymentType]);
 
   useEffect(() => {
     const initTotals = calculateTotals();
@@ -200,7 +205,11 @@ const POS = () => {
     };
 
     const result = await window.api.addCustomer(payload);
+    const res = await window.api.getCustomerById(result.id);
 
+    if (res.success && res.customer) {
+      setSelectedCustomer(res.customer);
+    }
     if (result.success) {
       toast.success("Customer added ");
     } else {
@@ -215,8 +224,15 @@ const POS = () => {
     );
     const totalCGST = items.reduce((sum, item) => sum + item.cgstAmount, 0);
     const totalIGST = items.reduce((sum, item) => sum + item.igstAmount, 0);
-    const grandTotal =
-      totalTaxableValue + totalCGST + totalIGST - formData.discount;
+
+    const grossTotal = totalTaxableValue + totalCGST + totalIGST;
+
+    // --- percentage discount ---
+    const discountPercent = formData.discount || 0;
+    const discountAmount = (grossTotal * discountPercent) / 100;
+
+    const grandTotal = grossTotal;
+    const netTotal = grossTotal - discountAmount;
 
     const advance = formData.advanceAmount || 0;
 
@@ -224,7 +240,7 @@ const POS = () => {
     let balanceToCustomer = 0;
 
     if (advance < grandTotal) {
-      balanceAmount = grandTotal - advance;
+      balanceAmount = Number((grandTotal - advance).toFixed(2));
     } else if (advance > grandTotal) {
       balanceToCustomer = Number((advance - grandTotal).toFixed(2));
     }
@@ -233,6 +249,9 @@ const POS = () => {
       totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
       totalCGST: Number(totalCGST.toFixed(2)),
       totalIGST: Number(totalIGST.toFixed(2)),
+      grossTotal: Number(grossTotal.toFixed(2)),
+      netTotal: Number(netTotal.toFixed(2)),
+      discountAmount: Number(discountAmount.toFixed(2)),
       grandTotal: Number(grandTotal.toFixed(2)),
       balanceAmount,
       balanceToCustomer,
@@ -307,12 +326,14 @@ const POS = () => {
       amountReceived: Number(formData.amountReceived.toFixed(2)),
       balanceToCustomer: Number(totals.balanceToCustomer.toFixed(2)),
       balanceAmount: Number(totals.balanceAmount.toFixed(2)),
+      totalIGST: Number(totals.totalIGST.toFixed(2)),
+      totalCGST: Number(totals.totalCGST.toFixed(2)),
+      totalTaxableValue: Number(totals.totalTaxableValue.toFixed(2)),
     };
 
     const newBill = { ...updatedFormData, items };
     setFormData(updatedFormData);
     setBill(newBill);
-
     try {
       const result = await saveBillingInfo(newBill);
       if (!result.success) {
@@ -396,7 +417,8 @@ const POS = () => {
                 value={selectedCustomer}
                 labelKey="name"
                 fetchItems={async (searchTerm) => {
-                  return await getCustomersInfo(searchTerm);
+                  const customers = await getCustomersInfo(searchTerm);
+                  return [{ id: 0, name: "Walking Customer" }, ...customers];
                 }}
               />
               <div className="">
@@ -416,6 +438,7 @@ const POS = () => {
             </label>
             <textarea
               value={formData.customerNote}
+              ref={noteRef}
               onChange={(e) => {
                 setFormData({ ...formData, customerNote: e.target.value });
               }}
@@ -487,25 +510,51 @@ const POS = () => {
                           onSelect={(product) =>
                             handleProductSelect(item.id, product)
                           }
-                          value={selectedProduct}
+                          value={
+                            item.productName
+                              ? { title: item.productName }
+                              : null
+                          }
                           maxHeight="150px"
                           labelKey="title"
                         />
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {item.unitPrice.toFixed(2)}
+                      {item.productName?.toLowerCase() === "customized cake" ? (
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-center"
+                          value={item.unitPrice || ""}
+                          onChange={(e) => {
+                            const rawValue = e.target.value.replace(
+                              /^0+(?=\d)/,
+                              ""
+                            );
+                            updateItem(
+                              item.id,
+                              "unitPrice",
+                              rawValue === "" ? 0 : Number(rawValue)
+                            );
+                          }}
+                        />
+                      ) : (
+                        item.unitPrice.toFixed(2)
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <input
                         type="number"
+                        min="0"
                         className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-center"
                         value={item.quantity}
                         onChange={(e) =>
                           updateItem(
                             item.id,
                             "quantity",
-                            parseInt(e.target.value) || 1
+                            Math.max(0, parseInt(e.target.value) || 0)
                           )
                         }
                       />
@@ -584,7 +633,7 @@ const POS = () => {
                     Balance to Customer
                   </label>
                   <NumberInput
-                    value={formData.balanceToCustomer}
+                    value={totals.balanceToCustomer}
                     onChange={(val) =>
                       setFormData({ ...formData, balanceToCustomer: val })
                     }
@@ -614,6 +663,10 @@ const POS = () => {
                     {totals.totalIGST.toFixed(2)}
                   </span>
                 </div>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Grand Total</span>
+                  <span>{totals.grandTotal.toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Discount (%)</span>
                   <NumberInput
@@ -624,9 +677,9 @@ const POS = () => {
                     className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-right"
                   />
                 </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-3">
-                  <span>Grand Total</span>
-                  <span>{totals.grandTotal.toFixed(2)}</span>
+                <div className="flex justify-between  border-t font-bold text-lg pt-3">
+                  <span>Net Total</span>
+                  <span>{totals.netTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Advance Amount</span>
@@ -637,7 +690,7 @@ const POS = () => {
                         ...formData,
                         advanceAmount: advance,
                         amountReceived: advance,
-                        balanceToCustomer: totals.grandTotal - advance,
+                        // balanceToCustomer: totals.grandTotal - advance,
                       });
                     }}
                     className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-right"

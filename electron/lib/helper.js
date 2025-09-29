@@ -10,7 +10,8 @@ export function mapBillForPrint(bill, branchInfo) {
   return {
     shopName: branchInfo.branch_name || "Shop",
     address: branchInfo.branchaddress || "",
-    contact: `Mobile: ${branchInfo.bnumber} | Email: ${branchInfo.Email}`,
+    mobile: branchInfo.bnumber,
+    email: branchInfo.Email,
     date:
       new Date(bill.billdate).toLocaleDateString("en-IN", {
         day: "2-digit",
@@ -24,16 +25,16 @@ export function mapBillForPrint(bill, branchInfo) {
         hour12: true,
       }),
     invoice: bill.invid,
-    customer: bill.customer_name || "Walking Customer",
+    customer: bill.customerName || "Walking Customer",
     gstNo: branchInfo.gst_no || "",
     items: bill.items.map((item) => ({
       name: item.productName || `Item ${item.item_id}`,
       qty: item.qty,
       price: Number(item.unit_price.toFixed(2)),
-      taxPercent:
-        (item.igst_value > 0
-          ? (item.igst_value / item.taxable_value) * 100
-          : (item.cgst_value / item.taxable_value) * 100) || 0,
+      taxPercent: item.productTax
+        ? Number(parseFloat(item.productTax).toFixed(2))
+        : 0,
+      taxableValue: Number(item.taxable_value.toFixed(2)),
     })),
     totals: {
       taxableValue: bill.items
@@ -43,10 +44,14 @@ export function mapBillForPrint(bill, branchInfo) {
         .reduce((sum, i) => sum + (i.cgst_value || 0), 0)
         .toFixed(2),
       totalSGST: bill.items
-        .reduce((sum, i) => sum + (i.cgst_value || 0), 0)
+        .reduce((sum, i) => sum + (i.igst_value || 0), 0)
         .toFixed(2),
       grandTotal: Number(bill.grandTotalf).toFixed(2),
-      netTotal: Number(bill.advanceamount || bill.grandTotalf).toFixed(2),
+      discountPercent: bill.discountPercentf || 0,
+      netTotal: (
+        (bill.grandTotalf || 0) -
+        (bill.grandTotalf * (bill.discountPercentf || 0)) / 100
+      ).toFixed(2),
     },
     paymentType: bill.paymenttype,
     advanceAmount: Number(bill.advanceamount || 0).toFixed(2),

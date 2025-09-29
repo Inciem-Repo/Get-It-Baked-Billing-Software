@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react"; // Loader2 for spinner
 import bakedLogo from "../assets/images/baked-logo.png";
 import loginBg from "../assets/images/login-bg.jpg";
 import { authBranches } from "../service/authService";
@@ -10,10 +10,14 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [resError, setResError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setResError("");
+
     try {
       const result = await authBranches({ username, password });
       if (result.success) {
@@ -23,11 +27,14 @@ const Login = () => {
       }
     } catch (err) {
       setResError("Something went wrong.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex">
+      {/* Left side */}
       <div className="flex-1 relative">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -51,6 +58,8 @@ const Login = () => {
           </div>
         </div>
       </div>
+
+      {/* Right side (login form) */}
       <div className="w-96 bg-gray-900 flex flex-col">
         <div className="p-8 flex justify-end">
           <div className="w-full flex items-center justify-center space-x-2">
@@ -67,6 +76,8 @@ const Login = () => {
               {resError && (
                 <span className="text-red-500 text-sm">{resError}</span>
               )}
+
+              {/* Username */}
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Username
@@ -77,9 +88,11 @@ const Login = () => {
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   placeholder="user name"
+                  disabled={isLoading}
                 />
               </div>
 
+              {/* Password */}
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Password
@@ -91,6 +104,7 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 pr-12"
                     placeholder="••••••"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
@@ -102,11 +116,24 @@ const Login = () => {
                 </div>
               </div>
 
+              {/* Login button */}
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                disabled={isLoading}
+                className={`w-full flex items-center justify-center bg-blue-600 text-white py-3 px-4 rounded-lg transition-colors font-medium ${
+                  isLoading
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:bg-blue-700"
+                }`}
               >
-                Log In
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={20} />
+                    Logging in...
+                  </>
+                ) : (
+                  "Log In"
+                )}
               </button>
             </form>
           </div>

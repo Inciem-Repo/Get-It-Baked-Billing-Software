@@ -117,3 +117,15 @@ export function addCustomer(customer) {
     return { success: false, error: err.message };
   }
 }
+
+export function getCustomerById(id) {
+  try {
+    const stmt = db.prepare(
+      "SELECT id, name, mobile, email FROM customers WHERE id = ?"
+    );
+    return stmt.get(id);
+  } catch (err) {
+    console.error("getCustomerById error:", err);
+    return null;
+  }
+}

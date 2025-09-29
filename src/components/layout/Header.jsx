@@ -29,7 +29,6 @@ function Header({ title }) {
     window.api.onSyncStatus((data) => {
       setStatus(data);
       setLoading(false);
-      console.log("Sync event:", data);
     });
   }, []);
   useEffect(() => {
@@ -42,6 +41,20 @@ function Header({ title }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (navigator.onLine) {
+        setLoading(true);
+        setStatus({ status: "loading", message: "Auto Syncing..." });
+        syncDetails();
+      } else {
+        setStatus({ status: "offline", message: "Not connected" });
+      }
+    }, 30 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="flex flex-col justify-between px-6 py-4 shadow-sm">
       <div className="flex justify-between items-center">

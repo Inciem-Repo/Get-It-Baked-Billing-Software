@@ -1,11 +1,11 @@
-  export const getBillingInfo = async (page = 1, limit = 10, filters = {}) => {
-    try {
-      return await window.api.getBillingDetails({ page, limit, filters });
-    } catch (error) {
-      console.error("Billing fetch error:", error);
-      return { success: false, message: "Something went wrong." };
-    }
-  };
+export const getBillingInfo = async (page = 1, limit = 10, filters = {}) => {
+  try {
+    return await window.api.getBillingDetails({ page, limit, filters });
+  } catch (error) {
+    console.error("Billing fetch error:", error);
+    return { success: false, message: "Something went wrong." };
+  }
+};
 
 export const saveBillingInfo = async (billData) => {
   try {
@@ -49,10 +49,9 @@ export const syncDetails = async () => {
   }
 };
 
-export const handleGenerateInvoice = async (branchId) => {
+export const handleGenerateInvoice = async (branchId, paymentType) => {
   try {
-    const result = await window.api.generateInvoiceNo(branchId);
-    console.log(result.invoiceNo);
+    const result = await window.api.generateInvoiceNo(branchId, paymentType);
     return result.invoiceNo;
   } catch (error) {
     console.error("Failed:", error);

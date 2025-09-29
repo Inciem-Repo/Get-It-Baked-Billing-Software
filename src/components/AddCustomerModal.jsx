@@ -33,23 +33,17 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     return re.test(mobile);
   };
 
-  const validateGSTIN = (gstin) => {
-    if (!gstin) return true;
-    const re = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    return re.test(gstin);
-  };
+  // const validateGSTIN = (gstin) => {
+  //   if (!gstin) return true;
+  // };
 
-  const validatePAN = (pan) => {
-    if (!pan) return true;
-    const re = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-    return re.test(pan);
-  };
+  // const validatePAN = (pan) => {
+  //   if (!pan) return true;
+  // };
 
-  const validatePostalCode = (postalCode) => {
-    if (!postalCode) return true; 
-    const re = /^[1-9][0-9]{5}$/;
-    return re.test(postalCode);
-  };
+  // const validatePostalCode = (postalCode) => {
+  //   if (!postalCode) return true;
+  // };
 
   const handleInputChange = (field, value) => {
     if (field.includes(".")) {
@@ -109,17 +103,11 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     if (!formData.companyName.trim()) {
       newErrors.companyName = "Customer/Company name is required";
     }
-    if (formData.mobile && !validateMobile(formData.mobile)) {
+    if (!formData.mobile && !validateMobile(formData.mobile)) {
       newErrors.mobile = "Please enter a valid 10-digit mobile number";
     }
     if (formData.email && !validateEmail(formData.email)) {
       newErrors.email = "Please enter a valid email address";
-    }
-    if (formData.gstin && !validateGSTIN(formData.gstin)) {
-      newErrors.gstin = "Please enter a valid GSTIN";
-    }
-    if (formData.pan && !validatePAN(formData.pan)) {
-      newErrors.pan = "Please enter a valid PAN";
     }
     if (
       formData.billingAddress.postalCode &&
@@ -155,7 +143,10 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-800">Add Customer</h2>
           <button
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              setErrors({});
+            }}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X size={24} />
@@ -195,6 +186,7 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mobile
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -213,7 +205,6 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
                 )}
               </div>
 
-    
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   GSTIN

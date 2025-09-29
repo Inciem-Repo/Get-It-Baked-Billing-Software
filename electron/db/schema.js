@@ -92,8 +92,25 @@ CREATE TABLE IF NOT EXISTS branches (
     igst_value REAL,
     total_price REAL NOT NULL
 )`,
-`CREATE TABLE IF NOT EXISTS sync_meta (
+  `CREATE TABLE IF NOT EXISTS sync_meta (
   table_name TEXT PRIMARY KEY,
   last_sync_at TEXT
-);`
+);`,
+  `CREATE TABLE IF NOT EXISTS expense (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  branch_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  expense_payment TEXT NOT NULL,
+  category_id INTEGER NOT NULL,
+  remarks TEXT,
+  date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  synced INTEGER DEFAULT 1 
+);`,
+  `
+CREATE TABLE IF NOT EXISTS expensecategory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL,
+    status INTEGER NOT NULL,
+    date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`,
 ];

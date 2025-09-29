@@ -4,18 +4,21 @@ import {
   buildCountQuery,
   buildGrandTotalQuery,
   buildInsertOrIgnoreQuery,
+  buildInsertQuery,
   buildSelectQuery,
 } from "../lib/buildQueries.js";
-
+import { getUser } from "./userService.js";
 
 export async function getBillingDetails(page = 1, limit = 10, filters = {}) {
   const offset = (page - 1) * limit;
+
   const query = buildBillHistorySelectQuery(filters, {
     orderBy: "b.created_at",
     orderDir: "DESC",
-    limit,
-    offset,
+    limit: limit > 0 ? limit : null,
+    offset: limit > 0 ? offset : null,
   });
+
   const rows = db.prepare(query).all();
 
   const countQuery = buildCountQuery("billing", filters);
@@ -36,60 +39,72 @@ export async function getBillingDetails(page = 1, limit = 10, filters = {}) {
 }
 
 export function addBilling(billData) {
-  const billingData = {
-    invid: billData.invoiceNo,
-    totalTaxableValuef: billData.totalTaxableValuef || 0,
-    totalCgstf: billData.totalCgstf || 0,
-    totalIgstf: billData.totalIgstf || 0,
-    discountPercentf: billData.discount || 0,
-    grandTotalf: billData.amount || 0,
-    customer_id: billData.customerId,
-    bill_type: "sale",
-    paymenttype: billData.paymentType || "",
-    billdate: billData.date,
-    branch_id: "1",
-    pdflink: null,
-    customernote: billData.customerNote,
-    advanceamount: billData.advanceAmount || 0,
-    balanceAmount: billData.balanceToCustomer || 0,
-    synced: 0,
-    pdflink: "",
-  };
-
-  const { query: billingQuery, values: billingValues } =
-    buildInsertOrIgnoreQuery("billing", billingData);
-
-  const result = db.prepare(billingQuery).run(billingValues);
-  const billId = result.lastInsertRowid;
-  if (!billId) {
-    throw new Error("Failed Create the bill.");
-  }
-  for (const item of billData.items) {
-    const itemData = {
-      bill_id: billId,
-      item_id: item.productId,
-      qty: item.quantity,
-      unit_price: item.unitPrice,
-      taxable_value: item.taxableValue,
-      cgst_value: item.cgstAmount,
-      igst_value: item.igstAmount,
-      total_price: item.total,
+  try {
+    const branch = getUser();
+    const billingData = {
+      invid: billData.invoiceNo,
+      totalTaxableValuef: billData.totalTaxableValue || 0,
+      totalCgstf: billData.totalCGST || 0,
+      totalIgstf: billData.totalIGST || 0,
+      discountPercentf: billData.discount || 0,
+      grandTotalf: billData.amount || 0,
+      customer_id: billData.customerId,
+      bill_type: "sale",
+      paymenttype: billData.paymentType || "",
+      billdate: billData.date,
+      branch_id: branch.id,
+      pdflink: "",
+      customernote: billData.customerNote,
+      advanceamount: billData.advanceAmount || 0,
+      balanceAmount: billData.balanceToCustomer || 0,
+      synced: 0,
     };
 
-    const { query: itemQuery, values: itemValues } = buildInsertOrIgnoreQuery(
-      "billing_items",
-      itemData
-    );
+    // ✅ Extract keys and values
+    const billingFields = Object.keys(billingData);
+    const billingValues = Object.values(billingData);
 
-    db.prepare(itemQuery).run(itemValues);
+    // ✅ Pass only fields array to buildInsertQuery
+    const billingQuery = buildInsertQuery("billing", billingFields);
+
+    const result = db.prepare(billingQuery).run(billingValues);
+    const billId = result.lastInsertRowid;
+
+    if (!billId) {
+      throw new Error("Bill insert failed — invoice may already exist.");
+    }
+
+    // Insert items
+    for (const item of billData.items) {
+      const itemData = {
+        bill_id: billId,
+        item_id: item.productId,
+        qty: item.quantity,
+        unit_price: item.unitPrice,
+        taxable_value: item.taxableValue,
+        cgst_value: item.cgstAmount,
+        igst_value: item.igstAmount,
+        total_price: item.total,
+      };
+
+      const itemFields = Object.keys(itemData);
+      const itemValues = Object.values(itemData);
+
+      const itemQuery = buildInsertQuery("billing_items", itemFields);
+      db.prepare(itemQuery).run(itemValues);
+    }
+
+    return billId;
+  } catch (err) {
+    console.error("❌ Error adding bill:", err.message);
+    throw err;
   }
-
-  return billId;
 }
 
 export function getBillingById(billId) {
   const billQuery = buildSelectQuery("billing", { id: billId });
   const billRow = db.prepare(billQuery).get();
+
   if (!billRow) return null;
   const itemQuery = `
     SELECT bi.*, p.title as productName
@@ -98,7 +113,21 @@ export function getBillingById(billId) {
     WHERE bi.bill_id = ?
   `;
   const itemRows = db.prepare(itemQuery).all(billId);
-  return { ...billRow, items: itemRows };
+
+  let customer = null;
+  if (billRow.customer_id) {
+    const customerQuery = `SELECT name FROM customers WHERE id = ?`;
+    const customerRow = db.prepare(customerQuery).get(billRow.customer_id);
+    if (customerRow) {
+      customer = customerRow.name;
+    }
+  }
+
+  return {
+    ...billRow,
+    customerName: customer || "Walking Customer",
+    items: itemRows,
+  };
 }
 
 export function getAllBillHistory(conditions = {}) {
@@ -109,20 +138,25 @@ export function getAllBillHistory(conditions = {}) {
   return db.prepare(query).all();
 }
 
-export function generateInvoiceNo(branchId) {
+export function generateInvoiceNo(branchId, paymentType) {
+  const prefix =
+    paymentType.toLowerCase() === "cash"
+      ? `INVCL${branchId}`
+      : `INVL${branchId}`;
   const row = db
     .prepare(
       `
-    SELECT invid 
-    FROM billing 
-    WHERE invid LIKE ? 
-    ORDER BY invid DESC 
-    LIMIT 1
-  `
+      SELECT invid 
+      FROM billing 
+      WHERE invid LIKE ? 
+      ORDER BY invid DESC 
+      LIMIT 1
+    `
     )
-    .get(`INVC${branchId}%`);
+    .get(`${prefix}%`);
 
   let newNumber;
+
   if (row) {
     const lastNumber = parseInt(row.invid.split("-").pop(), 10);
     newNumber = String(lastNumber + 1).padStart(5, "0");
@@ -130,5 +164,5 @@ export function generateInvoiceNo(branchId) {
     newNumber = "00001";
   }
 
-  return `INVCL${branchId}-${newNumber}`;
+  return `${prefix}-${newNumber}`;
 }

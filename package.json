@@ -1,7 +1,7 @@
 {
-  "name": "billing-app",
+  "name": "get-it-baked",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.3",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -18,6 +18,7 @@
     "better-sqlite3": "^12.2.0",
     "electron-pos-printer": "^1.3.8",
     "electron-store": "^10.1.0",
+    "electron-updater": "^6.6.2",
     "lucide-react": "^0.540.0",
     "mysql2": "^3.14.3",
     "react": "^19.1.1",
@@ -70,5 +71,12 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     }
-  }
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "Inciem-Repo",
+      "repo": "Get-It-Baked-Billing-Software"
+    }
+  ]
 }
