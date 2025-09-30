@@ -332,16 +332,109 @@ async function pushLocalToLive(
     }
   }
 }
+// keep until works fine
+// async function reconcileAndResyncBilling(branchId = null) {
+//   const mysqlConn = await getMySqlConnection();
+
+//   // 1. Get all local billing IDs
+//   const localIds = db
+//     .prepare(`SELECT id FROM billing`)
+//     .all()
+//     .map((r) => r.id);
+
+//   if (!localIds.length) return;
+
+//   // 2. Get live billing IDs
+//   let liveQuery = `SELECT id FROM billing`;
+//   let liveParams = [];
+
+//   if (branchId !== null) {
+//     liveQuery += ` WHERE branch_id = ?`;
+//     liveParams.push(branchId.toString());
+//   }
+
+//   const [liveRows] = await mysqlConn.execute(liveQuery, liveParams);
+//   const liveIds = new Set(liveRows.map((r) => r.id));
+
+//   // 3. Find missing billing IDs
+//   const missingIds = localIds.filter((id) => !liveIds.has(id));
+//   if (!missingIds.length) return;
+
+//   console.log(
+//     `Resync: Found ${missingIds.length} missing bills (branch=${branchId})`
+//   );
+//   console.log("➡ Missing bill IDs:", missingIds);
+
+//   for (const id of missingIds) {
+//     // 4. Get full local bill
+//     const row = db.prepare(`SELECT * FROM billing WHERE id = ?`).get(id);
+//     if (!row) continue;
+
+//     const { synced, ...liveRow } = row;
+
+//     // 🔥 Normalize fields
+//     if (liveRow.branch_id !== undefined) {
+//       liveRow.branch_id = String(parseInt(liveRow.branch_id, 10));
+//     }
+//     if (liveRow.customer_id !== undefined) {
+//       liveRow.customer_id = String(parseInt(liveRow.customer_id, 10));
+//     }
+
+//     const { query, values } = buildUpsertQuery("billing", liveRow);
+
+//     try {
+//       await mysqlConn.execute(query, values);
+//     } catch (err) {
+//       console.error(`Reconcile failed for billing.id=${id}`, err.message);
+//       continue;
+//     }
+
+//     // --- Push children: billing_items → table_details ---
+//     const items = db
+//       .prepare(`SELECT * FROM billing_items WHERE bill_id = ?`)
+//       .all(id);
+
+//     let allItemsSynced = true;
+
+//     for (const item of items) {
+//       const { synced: itemSynced, ...liveItem } = item;
+
+//       if (liveItem.bill_id !== undefined) {
+//         liveItem.bill_id = String(parseInt(liveItem.bill_id, 10));
+//       }
+//       if (liveItem.item_id !== undefined) {
+//         liveItem.item_id = String(parseInt(liveItem.item_id, 10));
+//       }
+
+//       const { query: itemQuery, values: itemValues } = buildUpsertQuery(
+//         "table_details",
+//         liveItem
+//       );
+
+//       try {
+//         await mysqlConn.execute(itemQuery, itemValues);
+//       } catch (err) {
+//         allItemsSynced = false;
+//         console.error(
+//           `Reconcile failed billing_item id=${item.id}, bill_id=${id}:`,
+//           err.message
+//         );
+//       }
+//     }
+
+//     // ✅ Mark bill as synced only if all items synced
+//     if (allItemsSynced) {
+//       db.prepare(`UPDATE billing SET synced = 1 WHERE id = ?`).run(id);
+//     }
+//   }
+// }
+
 async function reconcileAndResyncBilling(branchId = null) {
   const mysqlConn = await getMySqlConnection();
 
-  // 1. Get all local billing IDs
-  const localIds = db
-    .prepare(`SELECT id FROM billing`)
-    .all()
-    .map((r) => r.id);
-
-  if (!localIds.length) return;
+  // 1. Get all local billing rows (id + synced flag)
+  const localBills = db.prepare(`SELECT id, synced FROM billing`).all();
+  if (!localBills.length) return;
 
   // 2. Get live billing IDs
   let liveQuery = `SELECT id FROM billing`;
@@ -355,79 +448,99 @@ async function reconcileAndResyncBilling(branchId = null) {
   const [liveRows] = await mysqlConn.execute(liveQuery, liveParams);
   const liveIds = new Set(liveRows.map((r) => r.id));
 
-  // 3. Find missing billing IDs
-  const missingIds = localIds.filter((id) => !liveIds.has(id));
-  if (!missingIds.length) return;
+  // 3. Loop through local bills and handle missing ones
+  for (const bill of localBills) {
+    const { id, synced } = bill;
 
-  console.log(
-    `Resync: Found ${missingIds.length} missing bills (branch=${branchId})`
-  );
-  console.log("➡ Missing bill IDs:", missingIds);
+    if (!liveIds.has(id)) {
+      const row = db.prepare(`SELECT * FROM billing WHERE id = ?`).get(id);
+      if (!row) continue;
 
-  for (const id of missingIds) {
-    // 4. Get full local bill
-    const row = db.prepare(`SELECT * FROM billing WHERE id = ?`).get(id);
-    if (!row) continue;
+      if (!synced) {
+        // ➡ Unsynced new bill → push to live
+        console.log(`Pushing new bill ${id} to live`);
 
-    const { synced, ...liveRow } = row;
+        const { synced: _, ...liveRow } = row;
 
-    // 🔥 Normalize fields
-    if (liveRow.branch_id !== undefined) {
-      liveRow.branch_id = String(parseInt(liveRow.branch_id, 10));
-    }
-    if (liveRow.customer_id !== undefined) {
-      liveRow.customer_id = String(parseInt(liveRow.customer_id, 10));
-    }
+        // normalize fields
+        if (liveRow.branch_id !== undefined) {
+          liveRow.branch_id = String(parseInt(liveRow.branch_id, 10));
+        }
+        if (liveRow.customer_id !== undefined) {
+          liveRow.customer_id = String(parseInt(liveRow.customer_id, 10));
+        }
 
-    const { query, values } = buildUpsertQuery("billing", liveRow);
+        const { query, values } = buildUpsertQuery("billing", liveRow);
 
-    try {
-      await mysqlConn.execute(query, values);
-    } catch (err) {
-      console.error(`Reconcile failed for billing.id=${id}`, err.message);
-      continue;
-    }
+        try {
+          await mysqlConn.execute(query, values);
+        } catch (err) {
+          console.error(`Reconcile failed for billing.id=${id}`, err.message);
+          continue;
+        }
 
-    // --- Push children: billing_items → table_details ---
-    const items = db
-      .prepare(`SELECT * FROM billing_items WHERE bill_id = ?`)
-      .all(id);
+        // --- push child items to live ---
+        const items = db
+          .prepare(`SELECT * FROM billing_items WHERE bill_id = ?`)
+          .all(id);
 
-    let allItemsSynced = true;
+        let allItemsSynced = true;
 
-    for (const item of items) {
-      const { synced: itemSynced, ...liveItem } = item;
+        for (const item of items) {
+          const { synced: itemSynced, ...liveItem } = item;
 
-      if (liveItem.bill_id !== undefined) {
-        liveItem.bill_id = String(parseInt(liveItem.bill_id, 10));
+          if (liveItem.bill_id !== undefined) {
+            liveItem.bill_id = String(parseInt(liveItem.bill_id, 10));
+          }
+          if (liveItem.item_id !== undefined) {
+            liveItem.item_id = String(parseInt(liveItem.item_id, 10));
+          }
+
+          const { query: itemQuery, values: itemValues } = buildUpsertQuery(
+            "table_details",
+            liveItem
+          );
+
+          try {
+            await mysqlConn.execute(itemQuery, itemValues);
+          } catch (err) {
+            allItemsSynced = false;
+            console.error(
+              `Reconcile failed billing_item id=${item.id}, bill_id=${id}:`,
+              err.message
+            );
+          }
+        }
+
+        if (allItemsSynced) {
+          db.prepare(`UPDATE billing SET synced = 1 WHERE id = ?`).run(id);
+        }
+      } else {
+        // ➡ Already synced before but missing in live → move to archive
+        console.log(`Archiving bill ${id} locally (deleted in live)`);
+
+        db.prepare(
+          `
+          INSERT INTO billing_archive 
+          SELECT * FROM billing WHERE id = ?
+        `
+        ).run(id);
+
+        db.prepare(
+          `
+          INSERT INTO billing_items_archive 
+          SELECT * FROM billing_items WHERE bill_id = ?
+        `
+        ).run(id);
+
+        db.prepare(`DELETE FROM billing_items WHERE bill_id = ?`).run(id);
+        db.prepare(`DELETE FROM billing WHERE id = ?`).run(id);
       }
-      if (liveItem.item_id !== undefined) {
-        liveItem.item_id = String(parseInt(liveItem.item_id, 10));
-      }
-
-      const { query: itemQuery, values: itemValues } = buildUpsertQuery(
-        "table_details", // ✅ live items table
-        liveItem
-      );
-
-      try {
-        await mysqlConn.execute(itemQuery, itemValues);
-      } catch (err) {
-        allItemsSynced = false;
-        console.error(
-          `Reconcile failed billing_item id=${item.id}, bill_id=${id}:`,
-          err.message
-        );
-      }
-    }
-
-    // ✅ Mark bill as synced only if all items synced
-    if (allItemsSynced) {
-      db.prepare(`UPDATE billing SET synced = 1 WHERE id = ?`).run(id);
     }
   }
-}
 
+  await mysqlConn.end();
+}
 async function pullBillingForBranch(branchId) {
   const mysqlConn = await getMySqlConnection();
   try {
@@ -492,7 +605,6 @@ async function pullBillingForBranch(branchId) {
     await mysqlConn.end();
   }
 }
-
 // Master sync
 export async function runSync() {
   const branch = getUser();

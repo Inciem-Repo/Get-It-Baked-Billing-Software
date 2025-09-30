@@ -76,7 +76,10 @@ const POS = () => {
     ]);
     setFormData({
       date: new Date().toISOString().split("T")[0],
-      invoiceNo: await handleGenerateInvoice(branchInfo.id),
+      invoiceNo: await handleGenerateInvoice(
+        branchInfo.id,
+        formData.paymentType
+      ),
       customer: "Walking Customer",
       customerId: 0,
       customerNote: "",

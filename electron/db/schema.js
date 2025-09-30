@@ -113,4 +113,10 @@ CREATE TABLE IF NOT EXISTS expensecategory (
     status INTEGER NOT NULL,
     date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );`,
+  `CREATE TABLE IF NOT EXISTS billing_archive AS
+SELECT * FROM billing WHERE 0;
+`,
+  `CREATE TABLE IF NOT EXISTS billing_items_archive AS
+SELECT * FROM billing_items WHERE 0;
+`,
 ];

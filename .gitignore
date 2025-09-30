@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 electron/db/mysqlClient.js
+release
 
 # Editor directories and files
 .vscode/*

@@ -80,7 +80,7 @@ ipcMain.handle("get-billing-details", async (event, args = {}) => {
 
 ipcMain.handle("add-billing", async (event, billData) => {
   try {
-    const billId = addBilling(billData);
+    const billId = await addBilling(billData);
     const savedBill = { ...billData, id: billId };
     return { success: true, bill: savedBill };
   } catch (err) {
@@ -95,8 +95,8 @@ ipcMain.handle("open-print-preview", async (event, billData) => {
   }
   previewWindow = new BrowserWindow({
     width: 350,
-    height: 700,
-    modal: true,
+    height: 700, 
+    modal: true, 
     parent: BrowserWindow.getFocusedWindow(),
     webPreferences: {
       contextIsolation: false,

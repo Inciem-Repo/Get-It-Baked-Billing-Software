@@ -1,4 +1,5 @@
 import db from "../db/dbSetup.js";
+import { getMySqlConnection } from "../db/mysqlClient.js";
 import {
   buildBillHistorySelectQuery,
   buildCountQuery,
@@ -8,6 +9,7 @@ import {
   buildSelectQuery,
 } from "../lib/buildQueries.js";
 import { getUser } from "./userService.js";
+import isOnline from "is-online";
 
 export async function getBillingDetails(page = 1, limit = 10, filters = {}) {
   const offset = (page - 1) * limit;
@@ -37,8 +39,71 @@ export async function getBillingDetails(page = 1, limit = 10, filters = {}) {
     filters,
   };
 }
+// keep for reuse
+// export function addBilling(billData) {
+//   try {
+//     const branch = getUser();
+//     const billingData = {
+//       invid: billData.invoiceNo,
+//       totalTaxableValuef: billData.totalTaxableValue || 0,
+//       totalCgstf: billData.totalCGST || 0,
+//       totalIgstf: billData.totalIGST || 0,
+//       discountPercentf: billData.discount || 0,
+//       grandTotalf: billData.amount || 0,
+//       customer_id: billData.customerId,
+//       bill_type: "sale",
+//       paymenttype: billData.paymentType || "",
+//       billdate: billData.date,
+//       branch_id: branch.id,
+//       pdflink: "",
+//       customernote: billData.customerNote,
+//       advanceamount: billData.advanceAmount || 0,
+//       balanceAmount: billData.balanceToCustomer || 0,
+//       synced: 0,
+//     };
 
-export function addBilling(billData) {
+//     // ✅ Extract keys and values
+//     const billingFields = Object.keys(billingData);
+//     const billingValues = Object.values(billingData);
+
+//     // ✅ Pass only fields array to buildInsertQuery
+//     const billingQuery = buildInsertQuery("billing", billingFields);
+
+//     const result = db.prepare(billingQuery).run(billingValues);
+//     const billId = result.lastInsertRowid;
+
+//     if (!billId) {
+//       throw new Error("Bill insert failed — invoice may already exist.");
+//     }
+
+//     // Insert items
+//     for (const item of billData.items) {
+//       const itemData = {
+//         bill_id: billId,
+//         item_id: item.productId,
+//         qty: item.quantity,
+//         unit_price: item.unitPrice,
+//         taxable_value: item.taxableValue,
+//         cgst_value: item.cgstAmount,
+//         igst_value: item.igstAmount,
+//         total_price: item.total,
+//       };
+
+//       const itemFields = Object.keys(itemData);
+//       const itemValues = Object.values(itemData);
+
+//       const itemQuery = buildInsertQuery("billing_items", itemFields);
+//       db.prepare(itemQuery).run(itemValues);
+//     }
+
+//     return billId;
+//   } catch (err) {
+//     console.error("❌ Error adding bill:", err.message);
+//     throw err;
+//   }
+// }
+
+export async function addBilling(billData) {
   try {
     const branch = getUser();
     const billingData = {
@@ -57,24 +122,21 @@ export function addBilling(billData) {
       customernote: billData.customerNote,
       advanceamount: billData.advanceAmount || 0,
       balanceAmount: billData.balanceToCustomer || 0,
-      synced: 0,
+      synced: 0, // local only
     };
 
-    // ✅ Extract keys and values
     const billingFields = Object.keys(billingData);
     const billingValues = Object.values(billingData);
 
-    // ✅ Pass only fields array to buildInsertQuery
+    // Insert into local DB first
     const billingQuery = buildInsertQuery("billing", billingFields);
-
     const result = db.prepare(billingQuery).run(billingValues);
     const billId = result.lastInsertRowid;
 
-    if (!billId) {
+    if (!billId)
       throw new Error("Bill insert failed — invoice may already exist.");
-    }
 
-    // Insert items
+    // Insert items into local DB
     for (const item of billData.items) {
       const itemData = {
         bill_id: billId,
@@ -86,21 +148,70 @@ export function addBilling(billData) {
         igst_value: item.igstAmount,
         total_price: item.total,
       };
-
       const itemFields = Object.keys(itemData);
       const itemValues = Object.values(itemData);
-
       const itemQuery = buildInsertQuery("billing_items", itemFields);
       db.prepare(itemQuery).run(itemValues);
     }
 
+    // Check internet connectivity
+    const online = await isOnline();
+    if (online) {
+      try {
+        const mysqlConn = await getMySqlConnection();
+
+        // Remove 'synced' for live DB
+        const liveBillingData = { ...billingData };
+        delete liveBillingData.synced;
+
+        const liveFields = Object.keys(liveBillingData);
+        const liveValues = Object.values(liveBillingData);
+
+        const placeholders = liveFields.map(() => "?").join(",");
+        const liveBillQuery = `INSERT INTO billing (${liveFields.join(
+          ","
+        )}) VALUES (${placeholders})`;
+        await mysqlConn.execute(liveBillQuery, liveValues);
+
+        // Insert items into live DB
+        for (const item of billData.items) {
+          const itemData = {
+            bill_id: billId, // same ID as local
+            item_id: item.productId,
+            qty: item.quantity,
+            unit_price: item.unitPrice,
+            taxable_value: item.taxableValue,
+            cgst_value: item.cgstAmount,
+            igst_value: item.igstAmount,
+            total_price: item.total,
+          };
+          const itemFields = Object.keys(itemData);
+          const itemValues = Object.values(itemData);
+
+          const placeholders = itemFields.map(() => "?").join(",");
+          const liveItemQuery = `INSERT INTO table_details (${itemFields.join(
+            ","
+          )}) VALUES (${placeholders})`;
+          await mysqlConn.execute(liveItemQuery, itemValues);
+        }
+
+        db.prepare("UPDATE billing SET synced = 1 WHERE id = ?").run(billId);
+
+        console.log("Bill synced to live DB and marked synced locally");
+      } catch (err) {
+        console.error("Failed to sync bill to live DB:", err.message);
+        // synced remains 0 in local DB
+      }
+    } else {
+      console.log("Offline: Bill saved locally only (synced=0)");
+    }
+
     return billId;
   } catch (err) {
-    console.error("❌ Error adding bill:", err.message);
+    console.error("Error adding bill:", err.message);
     throw err;
   }
 }
-
 export function getBillingById(billId) {
   const billQuery = buildSelectQuery("billing", { id: billId });
   const billRow = db.prepare(billQuery).get();
@@ -129,7 +240,6 @@ export function getBillingById(billId) {
     items: itemRows,
   };
 }
-
 export function getAllBillHistory(conditions = {}) {
   const query = buildBillHistorySelectQuery(conditions, {
     orderBy: "b.id",
@@ -137,7 +247,6 @@ export function getAllBillHistory(conditions = {}) {
   });
   return db.prepare(query).all();
 }
-
 export function generateInvoiceNo(branchId, paymentType) {
   const prefix =
     paymentType.toLowerCase() === "cash"
