@@ -1,5 +1,6 @@
 import {
   buildInsertOrIgnoreQuery,
+  buildInsertQuery,
   buildSelectQuery,
   buildUpdateQuery,
   buildUpsertQuery,
@@ -8,7 +9,6 @@ import db from "../db/dbSetup.js";
 import { getMySqlConnection } from "../db/mysqlClient.js";
 import { getCurrentMySQLDateTime, sanitizeRow } from "../lib/helper.js";
 import { getUser } from "./userService.js";
-
 
 // sync data  live to local DB
 export async function syncTable(
@@ -323,9 +323,9 @@ async function pullBillingForBranch(branchId) {
 
     const bills = billsRaw.map((b) => ({ ...sanitizeRow(b), synced: 1 }));
 
+    // Insert bills manually (skip if invoice exists)
     const insertBills = db.transaction((chunk) => {
       for (const bill of chunk) {
-        // check if invoice already exists locally
         const exists = db
           .prepare(`SELECT 1 FROM billing WHERE invid = ? LIMIT 1`)
           .get(bill.invid);
@@ -336,8 +336,13 @@ async function pullBillingForBranch(branchId) {
         }
 
         try {
-          const { query, values } = buildInsertQuery("billing", bill);
-          db.prepare(query).run(values);
+          const fields = Object.keys(bill);
+          const placeholders = fields.map(() => "?").join(", ");
+          const sql = `INSERT INTO billing (${fields.join(
+            ", "
+          )}) VALUES (${placeholders})`;
+
+          db.prepare(sql).run(Object.values(bill));
           console.log(`Inserted bill (invid=${bill.invid})`);
         } catch (err) {
           console.error(`Bill insert failed (invid ${bill.invid}):`, err);
@@ -366,11 +371,14 @@ async function pullBillingForBranch(branchId) {
       const insertItems = db.transaction((items) => {
         for (const item of items) {
           try {
-            const { query, values } = buildInsertQuery(
-              "billing_items",
-              sanitizeRow(item)
-            );
-            db.prepare(query).run(values);
+            const clean = sanitizeRow(item);
+            const fields = Object.keys(clean);
+            const placeholders = fields.map(() => "?").join(", ");
+            const sql = `INSERT OR IGNORE INTO billing_items (${fields.join(
+              ", "
+            )}) VALUES (${placeholders})`;
+
+            db.prepare(sql).run(Object.values(clean));
           } catch (err) {
             console.error(
               `Item insert failed (bill ${item.bill_id}, item ${item.id}):`,

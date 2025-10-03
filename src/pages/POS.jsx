@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import Header from "../components/layout/header";
+import Header from "../components/layout/Header";
 import { getUserInfo } from "../service/authService";
 import { getProductsInfo } from "../service/productsService";
 import SearchableDropdown from "../components/common/SearchableDropdown";
@@ -770,7 +770,7 @@ const POS = () => {
               <option>— Select payment Type —</option>
               <option>Cash</option>
               <option>Online</option>
-              <option>Split</option>
+              {/* <option>Split</option> */}
             </select>
           </div>
           <div className="flex space-x-2">
