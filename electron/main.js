@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import "./ipcHandlers.js";
 import { syncTable } from "./service/syncService.js";
 import { initAutoUpdater } from "./service/updateService.js";
+import { startServer } from "./server/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +42,7 @@ app.whenReady().then(async () => {
     await syncTable("products");
     await syncTable("customers");
     await syncTable("expensecategory");
+    startServer();
   } catch (error) {
     console.log(error);
   }
