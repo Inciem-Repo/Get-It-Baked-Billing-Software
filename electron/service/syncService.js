@@ -240,7 +240,7 @@ async function reconcileAndResyncBilling(branchId = null) {
         let liveBillId;
         try {
           const [result] = await mysqlConn.execute(query, values);
-          liveBillId = result.insertId; // get the live auto-generated id
+          liveBillId = result.insertId;
         } catch (err) {
           console.error(
             `Reconcile failed for billing.invid=${invid}`,
@@ -257,7 +257,7 @@ async function reconcileAndResyncBilling(branchId = null) {
 
         for (const item of items) {
           const { id: __, synced: ___, bill_id, ...liveItem } = item;
-          liveItem.bill_id = liveBillId; // use the live bill id, not local
+          liveItem.bill_id = liveBillId; 
 
           const { query: itemQuery, values: itemValues } = buildUpsertQuery(
             "table_details",
@@ -307,8 +307,6 @@ async function pullBillingForBranch(branchId) {
   const mysqlConn = await getMySqlConnection();
   try {
     const today = new Date().toISOString().slice(0, 10);
-
-    // Get bills from live for this branch + today
     const [billsRaw] = await mysqlConn.execute(
       `SELECT * FROM billing WHERE branch_id = ? AND DATE(billdate) = ?`,
       [branchId, today]
@@ -387,7 +385,6 @@ async function pullBillingForBranch(branchId) {
     await mysqlConn.end();
   }
 }
-
 // Master sync
 export async function runSync() {
   const branch = getUser();

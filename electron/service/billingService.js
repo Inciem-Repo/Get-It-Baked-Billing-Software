@@ -296,8 +296,6 @@ export async function addBilling(billData) {
     if (billData.paymentType === "Split") {
       const onlineAmount = Number(billData.onlineAmount || 0);
       const cashAmount = Number(billData.cashAmount || 0);
-
-      // Online bill (uses original invoiceNo)
       if (onlineAmount > 0) {
         billsToInsert.push({
           ...billData,
