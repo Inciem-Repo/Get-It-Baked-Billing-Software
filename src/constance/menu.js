@@ -6,6 +6,7 @@ import {
   DollarSign,
   FileMinus,
   ChevronDown,
+  CookingPot,
 } from "lucide-react";
 
 export const menuItems = [
@@ -21,5 +22,7 @@ export const menuItems = [
       { id: "expense", label: "Expense Report", icon: FileMinus },
     ],
   },
+
+  // { id: "create-kot", label: "KOT", icon: CookingPot },
   { id: "printer-settings", label: "Printer Settings", icon: Printer },
 ];

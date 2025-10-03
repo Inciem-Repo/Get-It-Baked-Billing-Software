@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 
-const NumberInput = ({ value, onChange, className }) => {
-  const [inputValue, setInputValue] = useState(value.toString());
+const NumberInput = ({ value = 0, onChange, className }) => {
+  const [inputValue, setInputValue] = useState(String(value ?? 0));
 
   useEffect(() => {
-    setInputValue(value.toString());
+    setInputValue(String(value ?? 0));
   }, [value]);
 
   const handleChange = (e) => {
     let val = e.target.value;
 
-    // Allow only numbers and decimal
+    // Allow only numbers and decimals
     if (!/^\d*\.?\d*$/.test(val)) return;
 
-    // Remove leading zeros (but keep "0" or "0.x")
+    // Prevent leading zeros (except for decimal values like 0.5)
     if (val.length > 1 && val[0] === "0" && val[1] !== ".") {
       val = val.replace(/^0+/, "");
     }
