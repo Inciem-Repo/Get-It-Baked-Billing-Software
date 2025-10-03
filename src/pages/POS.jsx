@@ -90,6 +90,8 @@ const POS = () => {
       discount: 0,
       advanceAmount: 0,
       paymentType: "",
+      cashAmount: 0,
+      onlineAmount: 0,
     });
     setBill(null);
     setSelectedCustomer(null);
@@ -619,6 +621,50 @@ const POS = () => {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   />
                 </div>
+                {formData.paymentType === "Split" && (
+                  <div className=" flex gap-8">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Cash Amount
+                      </label>
+                      <NumberInput
+                        value={formData.cashAmount}
+                        onChange={(val) => {
+                          const cash = Number(val) || 0;
+                          const online = Number(formData.onlineAmount) || 0;
+
+                          setFormData({
+                            ...formData,
+                            cashAmount: cash,
+                            amountReceived: cash + online,
+                            advanceAmount: cash + online,
+                          });
+                        }}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Online Amount
+                      </label>
+                      <NumberInput
+                        value={formData.onlineAmount}
+                        onChange={(val) => {
+                          const cash = Number(formData.cashAmount) || 0;
+                          const online = Number(val) || 0;
+
+                          setFormData({
+                            ...formData,
+                            onlineAmount: online,
+                            amountReceived: cash + online,
+                            advanceAmount: cash + online,
+                          });
+                        }}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Amount Received
@@ -693,7 +739,6 @@ const POS = () => {
                         ...formData,
                         advanceAmount: advance,
                         amountReceived: advance,
-                        // balanceToCustomer: totals.grandTotal - advance,
                       });
                     }}
                     className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-right"
@@ -725,6 +770,7 @@ const POS = () => {
               <option>— Select payment Type —</option>
               <option>Cash</option>
               <option>Online</option>
+              <option>Split</option>
             </select>
           </div>
           <div className="flex space-x-2">
