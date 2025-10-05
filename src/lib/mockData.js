@@ -1,0 +1,217 @@
+
+
+export const mockBranches = [
+  {
+    id: "1",
+    name: "Downtown Branch",
+    code: "BR01",
+    address: "123 Main St, Downtown",
+    phone: "+1-555-0101",
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    name: "Uptown Branch",
+    code: "BR02",
+    address: "456 North Ave, Uptown",
+    phone: "+1-555-0102",
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const mockMenuItems = [
+  {
+    id: "1",
+    name: "Margherita Pizza",
+    category: "Pizza",
+    price: 12.99,
+    is_available: true,
+    preparation_time: 15,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    name: "Caesar Salad",
+    category: "Salads",
+    price: 8.99,
+    is_available: true,
+    preparation_time: 10,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "3",
+    name: "Grilled Chicken",
+    category: "Mains",
+    price: 15.99,
+    is_available: true,
+    preparation_time: 20,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "4",
+    name: "Pasta Carbonara",
+    category: "Pasta",
+    price: 13.99,
+    is_available: true,
+    preparation_time: 18,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "5",
+    name: "Fish & Chips",
+    category: "Mains",
+    price: 14.99,
+    is_available: true,
+    preparation_time: 22,
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const mockUsers = [
+  {
+    id: "admin-1",
+    email: "admin@restaurant.com",
+    full_name: "Admin User",
+    role: "admin",
+    branch_id: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "reception-1",
+    email: "reception@restaurant.com",
+    full_name: "Reception Staff",
+    role: "reception",
+    branch_id: "1",
+    branch: mockBranches[0],
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "kitchen-1",
+    email: "kitchen@restaurant.com",
+    full_name: "Kitchen Staff",
+    role: "kitchen",
+    branch_id: "1",
+    branch: mockBranches[0],
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const mockKOTs = [
+  {
+    id: "1",
+    kot_number: "KOT-BR01-000123",
+    branch_id: "1",
+    branch: mockBranches[0],
+    bill_id: null,
+    priority: "high",
+    status: "pending",
+    notes: "Customer is allergic to nuts",
+    created_by: "reception-1",
+    created_by_user: mockUsers[1],
+    created_at: new Date(Date.now() - 5 * 60000).toISOString(),
+    started_at: null,
+    ready_at: null,
+    served_at: null,
+    items: [
+      {
+        id: "1",
+        kot_id: "1",
+        menu_item_id: "1",
+        menu_item: mockMenuItems[0],
+        quantity: 2,
+        item_notes: "Extra cheese",
+        item_status: "pending",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "2",
+        kot_id: "1",
+        menu_item_id: "2",
+        menu_item: mockMenuItems[1],
+        quantity: 1,
+        item_notes: null,
+        item_status: "pending",
+        created_at: new Date().toISOString(),
+      },
+    ],
+  },
+  {
+    id: "2",
+    kot_number: "KOT-BR01-000124",
+    branch_id: "1",
+    branch: mockBranches[0],
+    bill_id: null,
+    priority: "medium",
+    status: "in_progress",
+    notes: null,
+    created_by: "reception-1",
+    created_by_user: mockUsers[1],
+    created_at: new Date(Date.now() - 15 * 60000).toISOString(),
+    started_at: new Date(Date.now() - 10 * 60000).toISOString(),
+    ready_at: null,
+    served_at: null,
+    items: [
+      {
+        id: "3",
+        kot_id: "2",
+        menu_item_id: "3",
+        menu_item: mockMenuItems[2],
+        quantity: 1,
+        item_notes: "Well done",
+        item_status: "cooking",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "4",
+        kot_id: "2",
+        menu_item_id: "4",
+        menu_item: mockMenuItems[3],
+        quantity: 2,
+        item_notes: null,
+        item_status: "cooking",
+        created_at: new Date().toISOString(),
+      },
+    ],
+  },
+  {
+    id: "3",
+    kot_number: "KOT-BR01-000125",
+    branch_id: "1",
+    branch: mockBranches[0],
+    bill_id: null,
+    priority: "low",
+    status: "ready",
+    notes: null,
+    created_by: "reception-1",
+    created_by_user: mockUsers[1],
+    created_at: new Date(Date.now() - 30 * 60000).toISOString(),
+    started_at: new Date(Date.now() - 25 * 60000).toISOString(),
+    ready_at: new Date(Date.now() - 5 * 60000).toISOString(),
+    served_at: null,
+    items: [
+      {
+        id: "5",
+        kot_id: "3",
+        menu_item_id: "5",
+        menu_item: mockMenuItems[4],
+        quantity: 1,
+        item_notes: null,
+        item_status: "done",
+        created_at: new Date().toISOString(),
+      },
+    ],
+  },
+];
+
+export let currentUser = mockUsers[2];
+
+export const setCurrentUser = (user) => {
+  currentUser = user;
+};
+
+// export { currentUsers };

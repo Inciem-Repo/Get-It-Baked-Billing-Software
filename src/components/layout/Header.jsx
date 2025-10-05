@@ -60,13 +60,15 @@ function Header({ title }) {
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
-          <button
-            onClick={() => setShowInfoModal(!showInfoModal)}
-            className="p-2 text-blue-600 hover:bg-blue-50 hover:cursor-pointer rounded-full transition-colors"
-            title="Information"
-          >
-            <Info size={20} />
-          </button>
+          {title == "Point of Sales" && (
+            <button
+              onClick={() => setShowInfoModal(!showInfoModal)}
+              className="p-2 text-blue-600 hover:bg-blue-50 hover:cursor-pointer rounded-full transition-colors"
+              title="Information"
+            >
+              <Info size={20} />
+            </button>
+          )}
         </div>
         <div className="flex">
           <SyncStatus />

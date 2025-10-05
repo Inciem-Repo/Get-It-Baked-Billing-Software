@@ -7,10 +7,12 @@ import {
   FileMinus,
   ChevronDown,
   CookingPot,
+  LayoutDashboard,
 } from "lucide-react";
 
 export const menuItems = [
-  { id: "", label: "POS", icon: Receipt },
+  { id: "", label: "Dashboard", icon: LayoutDashboard },
+  { id: "pos", label: "POS", icon: Receipt },
   { id: "billing-history", label: "Billing History", icon: History },
   {
     id: "reports",
@@ -23,6 +25,6 @@ export const menuItems = [
     ],
   },
 
-  // { id: "create-kot", label: "KOT", icon: CookingPot },
+  { id: "kot", label: "KOT", icon: CookingPot },
   { id: "printer-settings", label: "Printer Settings", icon: Printer },
 ];

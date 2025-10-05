@@ -9,6 +9,8 @@ import Expense from "./pages/Expense";
 import PaymentReport from "./pages/PaymentReport";
 import SalesReport from "./pages/SalesReport";
 import CreateKOT from "./pages/CreateKOT";
+import Dashboard from "./pages/Dashboard";
+import KOTPage from "./pages/KOTPage";
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -34,12 +36,14 @@ function App() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <Routes>
-        <Route path="/" element={<POS />} />
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/pos" element={<POS />} />
         <Route path="/billing-history" element={<BillingHistory />} />
         <Route path="/expense" element={<Expense />} />
         <Route path="/payment-report" element={<PaymentReport />} />
         <Route path="/sales-report" element={<SalesReport />} />
         <Route path="/create-kot" element={<CreateKOT />} />
+        <Route path="/kot" element={<KOTPage />} />
       </Routes>
     </div>
   );
