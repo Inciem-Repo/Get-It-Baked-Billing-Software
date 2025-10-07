@@ -199,7 +199,6 @@ const SearchableDropdown = ({
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     const dropdownHeight = parseInt(maxHeight) || 200;
-
     let top = rect.bottom + window.scrollY;
     let direction = "down";
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   X,
@@ -11,145 +11,120 @@ import {
   Hash,
 } from "lucide-react";
 import Header from "../components/layout/Header";
-
-// Mock data
-const mockMenuItems = [
-  {
-    id: "1",
-    name: "Margherita Pizza",
-    category: "Pizza",
-    price: 12.99,
-    is_available: true,
-  },
-  {
-    id: "2",
-    name: "Caesar Salad",
-    category: "Salads",
-    price: 8.99,
-    is_available: true,
-  },
-  {
-    id: "3",
-    name: "Pasta Carbonara",
-    category: "Pasta",
-    price: 14.99,
-    is_available: true,
-  },
-  {
-    id: "4",
-    name: "Grilled Salmon",
-    category: "Main Course",
-    price: 22.99,
-    is_available: true,
-  },
-  {
-    id: "5",
-    name: "Tiramisu",
-    category: "Desserts",
-    price: 6.99,
-    is_available: true,
-  },
-];
-
-const mockBranches = [
-  { id: "1", name: "Downtown", code: "DT" },
-  { id: "2", name: "Uptown", code: "UT" },
-  { id: "3", name: "Westside", code: "WS" },
-];
-
-const currentUser = { role: "admin", branch_id: "1" };
+import SearchableDropdown from "../components/common/SearchableDropdown";
+import { getCustomersInfo } from "../service/userService";
+import { getProductsInfo } from "../service/productsService";
 
 export default function CreateKOT() {
   const [priority, setPriority] = useState("medium");
-  const [notes, setNotes] = useState("");
   const [items, setItems] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [products, setProducts] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState(
-    currentUser.branch_id || mockBranches[0].id
-  );
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [kotToken, setKotToken] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState({
+    id: 0,
+    name: "Walking Customer",
+  });
+  const today = new Date().toISOString().split("T")[0];
+  const [errors, setErrors] = useState({
+    deliveryDate: "",
+    deliveryTime: "",
+    items: "",
+  });
 
-  const filteredMenuItems = mockMenuItems.filter(
-    (item) =>
-      item.is_available &&
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const addItem = (menuItem) => {
-    const existingItem = items.find((i) => i.menu_item.id === menuItem.id);
-    if (existingItem) {
-      setItems(
-        items.map((i) =>
-          i.id === existingItem.id ? { ...i, quantity: i.quantity + 1 } : i
-        )
-      );
-    } else {
-      setItems([
-        ...items,
-        {
-          id: Math.random().toString(),
-          menu_item: menuItem,
-          quantity: 1,
-          notes: "",
-        },
-      ]);
-    }
-    setSearchTerm("");
-    setShowSearch(false);
-  };
+  useEffect(() => {
+    const getProducts = async () => {
+      const result = await getProductsInfo();
+      setProducts(result);
+    };
+    getProducts();
+  }, []);
 
   const removeItem = (id) => {
     setItems(items.filter((i) => i.id !== id));
   };
 
+  const handleProductSelect = (product) => {
+    if (!product) return;
+
+    setItems((prevItems) => [
+      ...prevItems,
+      {
+        productId: product.id,
+        productName: product.title,
+        unitPrice: product.price || 0,
+        quantity: 1,
+        total: product.price || 0,
+      },
+    ]);
+
+    setShowSearch(false);
+  };
+
   const updateItemQuantity = (id, quantity) => {
     if (quantity < 1) return;
-    setItems(items.map((i) => (i.id === id ? { ...i, quantity } : i)));
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, quantity, total: item.unitPrice * quantity }
+          : item
+      )
+    );
   };
 
-  const updateItemNotes = (id, notes) => {
-    setItems(items.map((i) => (i.id === id ? { ...i, notes } : i)));
+  const updateItemNotes = (id, newNote) => {
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === id ? { ...item, notes: newNote } : item
+      )
+    );
   };
+
+  const handleCustomerSelect = (customer) => {
+    setSelectedCustomer(customer);
+  };
+
+  // ✅ Compute total
+  const totalAmount = items.reduce((sum, i) => sum + i.total, 0);
 
   const handleSubmit = () => {
-    const branch = mockBranches.find((b) => b.id === selectedBranch);
-    const kotNumber = `KOT-${branch?.code}-${String(
-      Math.floor(Math.random() * 999999)
-    ).padStart(6, "0")}`;
+    let hasError = false;
+    const newErrors = { deliveryDate: "", deliveryTime: "", items: "" };
 
-    console.log("Creating KOT:", {
-      kotNumber,
+    if (!deliveryDate) {
+      newErrors.deliveryDate = "Please select a delivery date.";
+      hasError = true;
+    }
+
+    if (!deliveryTime) {
+      newErrors.deliveryTime = "Please select a delivery time.";
+      hasError = true;
+    }
+
+    if (items.length === 0) {
+      newErrors.items = "Please add at least one order item.";
+      hasError = true;
+    }
+
+    setErrors(newErrors);
+
+    if (hasError) return;
+
+    // ✅ Everything valid, proceed
+    const kotData = {
       kotToken,
-      branch_id: selectedBranch,
+      customer: selectedCustomer,
       priority,
-      notes,
-      delivery_date: deliveryDate,
-      delivery_time: deliveryTime,
-      items: items.map((i) => ({
-        menu_item_id: i.menu_item.id,
-        quantity: i.quantity,
-        notes: i.notes,
-      })),
-    });
+      deliveryDate,
+      deliveryTime,
+      items,
+      totalAmount,
+    };
 
-    alert(`KOT ${kotNumber} created successfully!`);
-
-    setPriority("medium");
-    setNotes("");
-    setItems([]);
-    setDeliveryDate("");
-    setDeliveryTime("");
-    setKotToken("");
+    console.log("✅ KOT Data:", kotData);
   };
-
-  const today = new Date().toISOString().split("T")[0];
-  const totalAmount = items.reduce(
-    (sum, item) => sum + item.menu_item.price * item.quantity,
-    0
-  );
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-gray-50">
@@ -158,13 +133,13 @@ export default function CreateKOT() {
       </div>
       <div className="w-full mx-auto px-4 py-6 overflow-auto">
         <div className="space-y-6">
-          <div className="bg-white rounded-xl shadow-lg shadow-blue-100/50 border border-blue-100/50 p-8 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-lg shadow-blue-100/50 border border-blue-100/50 p-8">
             <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
               <div className="w-1 h-6 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full"></div>
               Order Information
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-[minmax(250px,auto)_minmax(250px,auto)_minmax(250px,auto)_minmax(200px,1fr)_minmax(200px,auto)] gap-4 ">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   KOT Token
@@ -174,27 +149,12 @@ export default function CreateKOT() {
                   value={kotToken}
                   onChange={(e) => setKotToken(e.target.value)}
                   placeholder="Enter token number"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 hover:bg-white"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Priority
-                </label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 hover:bg-white"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   Delivery Date
                 </label>
                 <input
@@ -202,8 +162,17 @@ export default function CreateKOT() {
                   value={deliveryDate}
                   onChange={(e) => setDeliveryDate(e.target.value)}
                   min={today}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 hover:bg-white"
+                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
+                    errors.deliveryDate
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                 />
+                {errors.deliveryDate && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.deliveryDate}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -214,26 +183,58 @@ export default function CreateKOT() {
                   type="time"
                   value={deliveryTime}
                   onChange={(e) => setDeliveryTime(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 hover:bg-white"
+                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 ${
+                    errors.deliveryTime
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                 />
+                {errors.deliveryTime && (
+                  <p className="text-red-500 text-sm">{errors.deliveryTime}</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 w-full">
+                <SearchableDropdown
+                  placeholder="Search and select customer..."
+                  label="Customer"
+                  shortcut={{ key: "Enter", shift: true }}
+                  onSelect={handleCustomerSelect}
+                  value={selectedCustomer}
+                  labelKey="name"
+                  fetchItems={async (searchTerm) => {
+                    const customers = await getCustomersInfo(searchTerm);
+                    return [{ id: 0, name: "Walking Customer" }, ...customers];
+                  }}
+                />
+                <div className="">
+                  <label className="block p-[10px] text-sm font-medium text-gray-700 mb-1" />
+                  <button
+                    className="px-4 py-2 rounded-md bg-blue-600 text-white hover:cursor-pointer"
+                    onClick={() => handleF3Click()}
+                  >
+                    F3
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Priority
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
               </div>
             </div>
-
-            <div className="mt-6 space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Special Instructions
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Allergies, dietary restrictions, table number, or any special requests..."
-                rows={3}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all bg-gray-50 hover:bg-white"
-              />
-            </div>
           </div>
-
-          <div className="bg-white rounded-2xl shadow-lg shadow-blue-100/50 border border-blue-100/50 p-8 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-lg shadow-blue-100/50 border border-blue-100/50 p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <div className="w-1 h-6 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full"></div>
@@ -255,58 +256,18 @@ export default function CreateKOT() {
             </div>
 
             {showSearch && (
-              <div className="mb-6 relative">
-                <div className="relative">
-                  <Search
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={18}
-                  />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search menu items..."
-                    className="w-full pl-12 pr-4 py-3 border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-blue-50/50"
-                    autoFocus
-                  />
-                </div>
-
-                {searchTerm && (
-                  <div className="absolute z-10 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto">
-                    {filteredMenuItems.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => addItem(item)}
-                        className="w-full px-5 py-3 text-left hover:bg-blue-50 transition-all border-b border-gray-100 last:border-b-0 group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-semibold text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
-                              {item.name}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-0.5">
-                              {item.category}
-                            </div>
-                          </div>
-                          <div className="text-sm font-bold text-blue-600">
-                            ₹{item.price.toFixed(2)}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                    {filteredMenuItems.length === 0 && (
-                      <div className="px-5 py-6 text-center text-gray-500 text-sm">
-                        <AlertCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                        No items found
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <SearchableDropdown
+                items={products}
+                placeholder="Search and select product..."
+                shortcut={{ key: "F1" }}
+                onSelect={handleProductSelect}
+                value={null}
+                maxHeight="150px"
+                labelKey="title"
+              />
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-4 pt-2">
               {items.map((item, index) => (
                 <div
                   key={item.id}
@@ -318,22 +279,11 @@ export default function CreateKOT() {
                     </div>
 
                     <div className="flex-1">
-                      <div className="flex items-start gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900">
-                          {item.menu_item.name}
-                        </h3>
-                        <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">
-                          {item.menu_item.category}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-600">
-                        ₹{item.menu_item.price.toFixed(2)} × {item.quantity} =
-                        <span className="text-blue-600 font-bold ml-1">
-                          ₹{(item.menu_item.price * item.quantity).toFixed(2)}
-                        </span>
-                      </p>
+                      <h3 className="font-semibold text-gray-900 mb-1">
+                        {item.productName || "Select a product"} - ₹
+                        {item.unitPrice?.toFixed(2) || "0.00"}
+                      </h3>
                     </div>
-
                     <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
                       <button
                         type="button"
@@ -369,10 +319,10 @@ export default function CreateKOT() {
 
                   <input
                     type="text"
-                    value={item.notes}
+                    value={item.notes || ""}
                     onChange={(e) => updateItemNotes(item.id, e.target.value)}
-                    placeholder="Special instructions for this item..."
-                    className="w-full px-4 py-2 bg-white border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    placeholder="Add special instructions or notes..."
+                    className="w-full px-4 py-2 bg-white border-2 border-gray-200 rounded-lg text-sm  transition-all"
                   />
                 </div>
               ))}
@@ -394,27 +344,24 @@ export default function CreateKOT() {
               <div className="mt-6 pt-6 border-t-2 border-gray-200">
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-semibold text-gray-700">
-                    Order Total
+                    Order Total - ₹{totalAmount.toFixed(2)}
                   </span>
-                  <span className="text-2xl font-bold text-blue-600">
-                    ₹{totalAmount.toFixed(2)}
-                  </span>
+
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={items.length === 0}
+                    className=" py-4 bg-blue-600 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg  text-sm px-4 text-white"
+                  >
+                    <Save size={20} />
+                    Create KOT Order
+                  </button>
                 </div>
               </div>
             )}
           </div>
-          <div className="w-full flex justify-end">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={items.length === 0}
-              className=" py-4 bg-blue-600 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg disabled:transform-none text-sm px-4 text-white"
-            >
-              <Save size={20} />
-              Create KOT Order
-            </button>
-          </div>
         </div>
+        <div className="w-full flex justify-end"></div>
       </div>
     </div>
   );

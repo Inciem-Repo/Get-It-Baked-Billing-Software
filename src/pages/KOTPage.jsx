@@ -332,20 +332,37 @@ export default function KOTPage() {
                             </div>
                           ))}
                         </div>
-
-                        {kot.notes && (
-                          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                            <div className="text-xs font-bold text-blue-900 uppercase tracking-wide mb-1">
-                              Special Instructions
-                            </div>
-                            <div className="text-sm text-blue-800">
-                              {kot.notes}
-                            </div>
-                          </div>
-                        )}
                       </div>
 
                       <div className="space-y-4">
+                        <div className="p-4 bg-white rounded-lg border border-slate-200 text-sm">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-600 font-medium">
+                              Customer Name:
+                            </span>
+                            <span className="text-slate-900 font-semibold">
+                              {"john Doe" || "N/A"}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-600 font-medium">
+                              Phone Number:
+                            </span>
+                            <span className="text-slate-900">
+                              {7845478457 || "No phone"}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between mt-2 border-t border-slate-200 pt-2">
+                            <span className="text-slate-600 font-medium">
+                              Order Total:
+                            </span>
+                            <span className="text-slate-900 text-lg font-bold">
+                              ₹{total?.toFixed(2) || "0.00"}
+                            </span>
+                          </div>
+                        </div>
                         <div>
                           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
                             Update Status
@@ -371,9 +388,6 @@ export default function KOTPage() {
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
-                            Actions
-                          </label>
                           <button
                             onClick={() => printBill(kot)}
                             disabled={
@@ -384,15 +398,6 @@ export default function KOTPage() {
                             <Printer className="w-5 h-5" />
                             <span>Print Bill</span>
                           </button>
-                        </div>
-
-                        <div className="p-4 bg-white rounded-lg border border-slate-200">
-                          <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">
-                            Order Total
-                          </div>
-                          <div className="text-3xl font-bold text-slate-900">
-                            ₹{total.toFixed(2)}
-                          </div>
                         </div>
                       </div>
                     </div>
