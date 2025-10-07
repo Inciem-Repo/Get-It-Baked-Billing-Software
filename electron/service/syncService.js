@@ -1,5 +1,6 @@
 import {
   buildInsertOrIgnoreQuery,
+  buildInsertQuery,
   buildSelectQuery,
   buildUpdateQuery,
   buildUpsertQuery,
@@ -8,7 +9,6 @@ import db from "../db/dbSetup.js";
 import { getMySqlConnection } from "../db/mysqlClient.js";
 import { getCurrentMySQLDateTime, sanitizeRow } from "../lib/helper.js";
 import { getUser } from "./userService.js";
-
 
 // sync data  live to local DB
 export async function syncTable(
@@ -73,7 +73,60 @@ export async function syncTable(
   updateLastSync(localTable);
   return rowsToInsert;
 }
+export async function syncExpense(branchId) {
+  const tableName = "expense";
 
+  const selectQuery = `
+    SELECT * 
+    FROM ${tableName}
+    WHERE branch_id = ${branchId}
+  `;
+
+  const mysqlConn = await getMySqlConnection();
+  const [rows] = await mysqlConn.execute(selectQuery);
+  if (!rows.length) {
+    console.log(`No expenses found for branch ${branchId}`);
+    return [];
+  }
+
+  const rowsToInsert = rows.map((row) => ({
+    ...row,
+    date:
+      typeof row.date === "string"
+        ? row.date.split("T")[0]
+        : row.date instanceof Date
+        ? new Date(row.date.getTime() - row.date.getTimezoneOffset() * 60000)
+            .toISOString()
+            .split("T")[0]
+        : String(row.date).slice(0, 10),
+    synced: 1,
+  }));
+
+  const fields = Object.keys(rowsToInsert[0]);
+  const placeholders = fields.map(() => "?").join(",");
+
+  const insertQuery = `
+    INSERT OR REPLACE INTO ${tableName} (${fields.join(",")})
+    VALUES (${placeholders})
+  `;
+  const insert = db.prepare(insertQuery);
+
+  // Insert into SQLite
+  const insertMany = db.transaction((data) => {
+    for (const row of data) {
+      insert.run(Object.values(row));
+    }
+  });
+
+  insertMany(rowsToInsert);
+
+  console.log(
+    `✅ Synced ${rowsToInsert.length} expenses for branch ${branchId}`
+  );
+  updateLastSync(tableName);
+
+  return rowsToInsert;
+}
 // update the sync time on the db
 function updateLastSync(table) {
   const current = getCurrentMySQLDateTime();
@@ -257,7 +310,7 @@ async function reconcileAndResyncBilling(branchId = null) {
 
         for (const item of items) {
           const { id: __, synced: ___, bill_id, ...liveItem } = item;
-          liveItem.bill_id = liveBillId; 
+          liveItem.bill_id = liveBillId;
 
           const { query: itemQuery, values: itemValues } = buildUpsertQuery(
             "table_details",
@@ -332,9 +385,11 @@ async function pullBillingForBranch(branchId) {
           console.log(`Skipping existing bill (invid=${bill.invid})`);
           continue;
         }
-
         try {
-          const { query, values } = buildInsertQuery("billing", bill);
+          const row = sanitizeRow(bill);
+          const fields = Object.keys(row);
+          const values = Object.values(row);
+          const query = buildInsertOrIgnoreQuery("billing", sanitizeRow(bill));
           db.prepare(query).run(values);
           console.log(`Inserted bill (invid=${bill.invid})`);
         } catch (err) {
@@ -364,7 +419,7 @@ async function pullBillingForBranch(branchId) {
       const insertItems = db.transaction((items) => {
         for (const item of items) {
           try {
-            const { query, values } = buildInsertQuery(
+            const { query, values } = buildInsertOrIgnoreQuery(
               "billing_items",
               sanitizeRow(item)
             );
@@ -392,7 +447,7 @@ export async function runSync() {
   await pushLocalToLive("expense");
   await syncTable("products");
   await syncTable("customers");
-  await syncTable("expense", branch.id, null, "branch_id");
+  await syncExpense(branch.id);
   await reconcileAndResyncBilling(branch.id);
   await pullBillingForBranch(branch.id);
   findMissingBills(branch.id);
