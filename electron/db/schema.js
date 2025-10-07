@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS branches (
   expense_payment TEXT NOT NULL,
   category_id INTEGER NOT NULL,
   remarks TEXT,
-  date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  date DATE NOT NULL,
   synced INTEGER DEFAULT 1 
 );`,
   `

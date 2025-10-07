@@ -68,56 +68,6 @@ export function searchCustomers(searchTerm = "") {
   }
 }
 
-// export function addCustomer(customer) {
-//   try {
-//     const fields = [
-//       "branch_id",
-//       "name",
-//       "gstin",
-//       "pan",
-//       "tax_type",
-//       "tds_percentage",
-//       "mobile",
-//       "email",
-//       "billing_address",
-//       "billing_city",
-//       "billing_postal_code",
-//       "shipping_address",
-//       "shipping_city",
-//       "shipping_postal_code",
-//       "date",
-//       "synced",
-//     ];
-
-//     const query = buildInsertQuery("customers", fields);
-//     const stmt = db.prepare(query);
-
-//     const values = [
-//       customer.branch_id,
-//       customer.companyName,
-//       customer.gstin,
-//       customer.pan,
-//       null,
-//       null,
-//       customer.mobile,
-//       customer.email,
-//       customer.billingAddress.address,
-//       customer.billingAddress.city,
-//       customer.billingAddress.postalCode,
-//       customer.shippingAddress.address,
-//       customer.shippingAddress.city,
-//       customer.shippingAddress.postalCode,
-//       new Date().toISOString(),
-//       0,
-//     ];
-
-//     const result = stmt.run(values);
-//     return { success: true, id: result.lastInsertRowid };
-//   } catch (err) {
-//     console.error("Error inserting customer:", err);
-//     return { success: false, error: err.message };
-//   }
-// }
 function generateCustomerId(branchId) {
   const RANGE = 10000000; // 10 million slots per branch
   const base = branchId * RANGE;
@@ -144,8 +94,7 @@ function generateCustomerId(branchId) {
 export async function addCustomer(customer) {
   try {
     const branch = getUser();
-    const customId = generateCustomerId(branch.id);
-    console.log(customId);
+
     const fields = [
       "id",
       "branch_id",
@@ -166,8 +115,55 @@ export async function addCustomer(customer) {
       "synced",
     ];
 
-    const values = [
-      customId,
+    let idToUse;
+    let syncedFlag = 0;
+
+    if (await isOnline()) {
+      try {
+        const mysqlConn = await getMySqlConnection();
+
+        // Prepare fields without "id" and "synced" (let MySQL handle auto-increment)
+        const liveFields = fields.filter((f) => f !== "id" && f !== "synced");
+        const liveValues = [
+          String(branch.id),
+          String(customer.companyName || ""),
+          String(customer.gstin || ""),
+          String(customer.pan || ""),
+          null,
+          null,
+          String(customer.mobile || ""),
+          String(customer.email || ""),
+          String(customer.billingAddress?.address || ""),
+          String(customer.billingAddress?.city || ""),
+          String(customer.billingAddress?.postalCode || ""),
+          String(customer.shippingAddress?.address || ""),
+          String(customer.shippingAddress?.city || ""),
+          String(customer.shippingAddress?.postalCode || ""),
+          new Date().toISOString(),
+        ];
+
+        const liveQuery = buildInsertQuery("customers", liveFields);
+        const [result] = await mysqlConn.execute(liveQuery, liveValues);
+
+        // Get auto-incremented ID from live
+        idToUse = result.insertId;
+        syncedFlag = 1;
+
+        console.log(`Customer added online with liveId=${idToUse}`);
+      } catch (err) {
+        console.error("Failed to insert into live DB, fallback to offline:", err.message);
+
+        // Fallback to offline ID
+        idToUse = generateCustomerId(branch.id);
+      }
+    } else {
+      // Offline mode → generate branch-based ID
+      idToUse = generateCustomerId(branch.id);
+    }
+
+    // Insert into local (always use the chosen idToUse)
+    const localValues = [
+      idToUse,
       String(branch.id),
       String(customer.companyName || ""),
       String(customer.gstin || ""),
@@ -183,36 +179,19 @@ export async function addCustomer(customer) {
       String(customer.shippingAddress?.city || ""),
       String(customer.shippingAddress?.postalCode || ""),
       new Date().toISOString(),
-      0,
+      syncedFlag,
     ];
 
-    // --- Insert into local (SQLite) ---
     const localQuery = buildInsertQuery("customers", fields);
-    db.prepare(localQuery).run(values);
-    if (await isOnline()) {
-      try {
-        const mysqlConn = await getMySqlConnection();
+    db.prepare(localQuery).run(localValues);
 
-        const liveFields = fields.filter((f) => f !== "synced");
-        const liveValues = values.filter((_, i) => fields[i] !== "synced");
-
-        const liveQuery = buildInsertQuery("customers", liveFields);
-        await mysqlConn.execute(liveQuery, liveValues);
-
-        db.prepare("UPDATE customers SET synced = 1 WHERE id = ?").run(
-          customId
-        );
-      } catch (err) {
-        console.error("Failed to sync customer to live DB:", err.message);
-      }
-    }
-
-    return { success: true, id: customId };
+    return { success: true, id: idToUse };
   } catch (err) {
     console.error("Error inserting customer:", err);
     return { success: false, error: err.message };
   }
 }
+
 
 export function getCustomerById(id) {
   try {
