@@ -49,6 +49,7 @@ const POS = () => {
   const [bill, setBill] = useState(null);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const noteRef = useRef(null);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     invoiceNo: "",
@@ -374,6 +375,7 @@ const POS = () => {
       toast.error("⚠️ Please select the payment type.");
       return;
     }
+    setSaving(true);
 
     const updatedFormData = {
       ...formData,
@@ -426,6 +428,9 @@ const POS = () => {
     } catch (error) {
       console.error("Save error:", error);
       toast.error(" Something went wrong while saving the bill.");
+      setSaving(false);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -832,18 +837,21 @@ const POS = () => {
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
               onClick={() => handleSave("save")}
+              disabled={saving}
             >
               Save Details
             </button>
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
               onClick={() => handleSave("saveAndPrint")}
+              disabled={saving}
             >
               Save & Print
             </button>
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
               onClick={() => handleSave("saveAndList")}
+              disabled={saving}
             >
               Save & List
             </button>
