@@ -12,8 +12,29 @@ import { PerformanceChart } from "../components/PerformanceChart";
 import { KOTList } from "../components/KOTList";
 import CombinedSummaryCard from "../components/CombinedSummaryCard";
 import Header from "../components/layout/Header";
+import { useEffect, useState } from "react";
+import {
+  getBillingSummary,
+  getBranchExpenseSummary,
+} from "../service/billingService";
 
 const Dashboard = () => {
+  const [summaryDetails, setSummaryDetails] = useState();
+  const [expenseSummaryDetails, setExpenseSummaryDetails] = useState();
+  useEffect(() => {
+    const getBranchSummary = async () => {
+      try {
+        const res = await getBillingSummary();
+        const resExpense = await getBranchExpenseSummary();
+        setExpenseSummaryDetails(resExpense.data);
+        setSummaryDetails(res.data);
+      } catch (error) {
+        console.log.log(error);
+      }
+    };
+    getBranchSummary();
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen w-full bg-gray-50">
       <div className="bg-white">
@@ -25,32 +46,26 @@ const Dashboard = () => {
             <CombinedSummaryCard
               title="Overall Stats"
               primaryLabel="Total Amount"
-              primaryValue="₹2,45,890"
+              primaryValue={summaryDetails?.totalGrandTotal}
               secondaryLabel="Total Bills"
-              secondaryValue="1,234"
+              secondaryValue={summaryDetails?.totalBills}
               icon={DollarSign}
-              trend="+12.5%"
-              trendUp={true}
             />
             <CombinedSummaryCard
               title="Today's Stats"
               primaryLabel="Amount"
-              primaryValue="₹18,500"
+              primaryValue={summaryDetails?.todayGrandTotal}
               secondaryLabel="Bills"
-              secondaryValue="67"
+              secondaryValue={summaryDetails?.todayBillCount}
               icon={Calendar}
-              trend="+15.3%"
-              trendUp={true}
             />
             <CombinedSummaryCard
-              title="Today's Expense"
-              primaryLabel="Expense"
-              primaryValue="₹8,240"
-              secondaryLabel="Change"
-              secondaryValue="+5.2%"
+              title="Total Expense"
+              primaryLabel="Total Expense"
+              primaryValue={expenseSummaryDetails?.totalExpense}
+              secondaryLabel="Today Expense"
+              secondaryValue={expenseSummaryDetails?.todayExpense}
               icon={TrendingDown}
-              trend="+5.2%"
-              trendUp={false}
             />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

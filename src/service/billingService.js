@@ -57,3 +57,29 @@ export const handleGenerateInvoice = async (branchId, paymentType) => {
     console.error("Failed:", error);
   }
 };
+
+export const getBillingSummary = async () => {
+  try {
+    return await window.api.getSummary();
+  } catch (error) {
+    console.error("Billing fetch error:", error);
+    return { success: false, message: "Something went wrong." };
+  }
+};
+
+export const getBranchExpenseSummary = async () => {
+  try {
+    return await window.api.getExpenseSummary();
+  } catch (error) {
+    console.error("Billing fetch error:", error);
+    return { success: false, message: "Something went wrong." };
+  }
+};
+export const getBranchPerformanceSummary = async (fromDate, toDate) => {
+  try {
+    return await window.api.getPerformanceSummary(fromDate, toDate);
+  } catch (error) {
+    console.error("Billing fetch error:", error);
+    return { success: false, message: "Something went wrong." };
+  }
+};

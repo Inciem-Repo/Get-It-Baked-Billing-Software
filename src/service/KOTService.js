@@ -53,3 +53,25 @@ export async function getKOTDetails(token) {
     return null;
   }
 }
+export async function updateKOTInvoiceID(kotToken, invoiceId) {
+  try {
+    const response = await window.api.updateKOTInvoiceByToken(
+      kotToken,
+      invoiceId
+    );
+    return response;
+  } catch (error) {
+    console.error("Failed to get KOT details:", error);
+    return null;
+  }
+}
+
+export async function getNewKOTS(kotToken, invoiceId) {
+  try {
+    const response = await window.api.getLastKot();
+    return response;
+  } catch (error) {
+    console.error("Failed to get KOT details:", error);
+    return null;
+  }
+}

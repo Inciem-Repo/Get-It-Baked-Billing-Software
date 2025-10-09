@@ -1,5 +1,5 @@
 import db from "../db/dbSetup.js";
-import { buildInsertQuery } from "../lib/buildQueries.js";
+import { buildInsertQuery, buildUpdateQuery } from "../lib/buildQueries.js";
 import { getUser } from "./userService.js";
 
 let branch = getUser();
@@ -194,5 +194,69 @@ export async function getKotByToken(kotToken) {
   } catch (error) {
     console.error("Error fetching KOT by token:", error);
     throw new Error("Failed to fetch KOT details");
+  }
+}
+export async function updateKotInvoiceByToken(kotToken, invoiceId) {
+  try {
+    const fields = ["invoiceId", "updatedAt"];
+    const query = buildUpdateQuery("kot_orders", fields, "kotToken");
+
+    const stmt = db.prepare(query);
+    const result = stmt.run(invoiceId, new Date().toISOString(), kotToken);
+
+    if (result.changes === 0) {
+      throw new Error("No KOT found with given token");
+    }
+
+    return { kotToken, invoiceId };
+  } catch (error) {
+    console.error("Error updating KOT invoice:", error);
+    throw new Error("Failed to update KOT invoice");
+  }
+}
+export async function getLastKotsByBranch(limit = 5) {
+  const branchId = branch.id;
+  try {
+    // Get last `limit` KOTs
+    const kotOrders = db
+      .prepare(
+        `
+        SELECT 
+          ko.*,
+          c.name AS customerName,
+          c.mobile AS customerMobile,
+          c.email AS customerEmail
+        FROM kot_orders ko
+        LEFT JOIN customers c ON c.id = ko.customerId
+        WHERE ko.branchId = ? AND ko.isDeleted = 0
+        ORDER BY ko.id DESC
+        LIMIT ?
+        `
+      )
+      .all(branchId, limit);
+
+    if (!kotOrders.length) return [];
+
+    const kotItemsStmt = db.prepare(
+      `
+      SELECT 
+        ki.*, 
+        p.title AS productName
+      FROM kot_items ki
+      LEFT JOIN products p ON p.id = ki.productId
+      WHERE ki.kotOrderId = ? AND ki.isDeleted = 0
+      `
+    );
+
+    // Map each KOT to include its items
+    const kotData = kotOrders.map((kot) => ({
+      ...kot,
+      items: kotItemsStmt.all(kot.kotToken),
+    }));
+
+    return kotData;
+  } catch (error) {
+    console.error("Error fetching last KOTs:", error);
+    throw new Error("Failed to fetch last KOTs");
   }
 }

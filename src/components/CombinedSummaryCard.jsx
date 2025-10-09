@@ -5,8 +5,6 @@ const CombinedSummaryCard = ({
   secondaryLabel,
   secondaryValue,
   icon: Icon,
-  trend,
-  trendUp,
 }) => {
   return (
     <div className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow duration-200">

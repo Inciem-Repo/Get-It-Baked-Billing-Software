@@ -16,7 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { mapBillForPrint } from "../lib/helper";
 import { useLocation, useNavigate } from "react-router-dom";
 import AddCustomerModal from "../components/AddCustomerModal";
-import { getKOTDetails } from "../service/KOTService";
+import { getKOTDetails, updateKOTInvoiceID } from "../service/KOTService";
 
 const POS = () => {
   const { branchInfo } = useAuth();
@@ -141,7 +141,9 @@ const POS = () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [items]);
+
   useEffect(() => {
+    if (!token || !products.length) return;
     const fetchKOTDetails = async () => {
       if (!token) return;
 
@@ -150,6 +152,7 @@ const POS = () => {
         toast.error("Invalid KOT token");
         return;
       }
+
       const kotDetails = res.data;
       const { customerId, deliveryDate, items = [] } = kotDetails;
 
@@ -160,37 +163,36 @@ const POS = () => {
           customer = res.customer;
         }
       }
-
-      const mappedItems = items.map((i) => ({
+      const initialItems = items.map((i) => ({
         id: Date.now() + Math.random(),
         productId: i.productId,
         productName: i.productName,
-        quantity: i.quantity,
-        unit: i.unit || "",
-        unitPrice: i.unitPrice || 0,
-        taxableValue: i.taxableValue || 0,
-        cgstRate: i.cgstRate || 0,
-        cgstAmount: i.cgstAmount || 0,
-        igstRate: i.igstRate || 0,
-        igstAmount: i.igstAmount || 0,
-        total: i.total || 0,
+        quantity: i.quantity || 1,
       }));
 
       setSelectedCustomer(customer);
-      setItems(mappedItems);
+      setItems(initialItems);
       setFormData((prev) => ({
         ...prev,
-        date: deliveryDate || new Date().toISOString().split("T")[0],
         customer: customer.name,
         customerId: customer.id,
         customerNote: kotDetails.notes || "",
       }));
+      initialItems.forEach((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        if (product) {
+          const updatedProduct = { ...product, quantity: 10, unitPrice: 10 };
+          handleProductSelect(item.id, updatedProduct);
+        } else {
+          console.warn("Product not found for ID:", item.productId);
+        }
+      });
 
       toast.success(`Loaded KOT ${kotDetails.kotToken}`);
     };
 
     fetchKOTDetails();
-  }, [token]);
+  }, [token, products]);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -393,16 +395,19 @@ const POS = () => {
 
     const newBill = { ...updatedFormData, items };
     setFormData(updatedFormData);
-    setBill(newBill);
+    new setBill(newBill);
     try {
       const result = await saveBillingInfo(newBill);
+
       if (!result.success) {
         toast.error("Error: " + result.error);
         return;
       }
 
       const savedBill = result.bill;
-
+      if (token) {
+        await updateKOTInvoiceID(token, newBill.invoiceNo);
+      }
       switch (type) {
         case "save":
           toast.success("Bill saved successfully");
@@ -482,7 +487,6 @@ const POS = () => {
                 searchKeys={["mobile"]}
                 fetchItems={async (searchTerm) => {
                   const customers = await getCustomersInfo(searchTerm);
-                  console.log(customers);
                   return [{ id: 0, name: "Walking Customer" }, ...customers];
                 }}
               />
@@ -606,7 +610,7 @@ const POS = () => {
                           }}
                         />
                       ) : (
-                        item.unitPrice.toFixed(2)
+                        item?.unitPrice?.toFixed(2)
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -626,22 +630,22 @@ const POS = () => {
                     </td>
                     <td className="px-4 py-3 text-center">{item?.unit}</td>
                     <td className="px-4 py-3 text-sm text-center">
-                      {item.taxableValue.toFixed(2)}
+                      {item.taxableValue?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {item.cgstRate.toFixed(2)}
+                      {item.cgstRate?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-sm text-center">
-                      {item.cgstAmount.toFixed(2)}
+                      {item.cgstAmount?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {item.igstRate.toFixed(2)}
+                      {item.igstRate?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-sm text-center">
-                      {item.igstAmount.toFixed(2)}
+                      {item.igstAmount?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-sm text-center font-medium">
-                      {item.total.toFixed(2)}
+                      {item.total?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex space-x-1">

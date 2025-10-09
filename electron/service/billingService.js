@@ -8,8 +8,11 @@ import {
   buildInsertQuery,
   buildSelectQuery,
 } from "../lib/buildQueries.js";
+import { formatDateToYMD, getDayName } from "../lib/helper.js";
 import { getUser } from "./userService.js";
 import isOnline from "is-online";
+
+let branch = getUser();
 
 export async function getBillingDetails(page = 1, limit = 10, filters = {}) {
   const offset = (page - 1) * limit;
@@ -212,7 +215,6 @@ export async function addBilling(billData) {
         });
       }
     } else {
-      // Normal single bill
       billsToInsert.push(billData);
     }
 
@@ -328,5 +330,94 @@ export async function addBilling(billData) {
   } catch (err) {
     console.error("Error adding bill:", err.message);
     throw err;
+  }
+}
+
+export async function getBillingSummary() {
+  try {
+    const branchId = branch.id;
+
+    // Total summary
+    const totalSummary = db
+      .prepare(
+        `
+        SELECT 
+          COUNT(*) AS totalBills,
+          IFNULL(SUM(grandTotalf), 0) AS totalGrandTotal
+        FROM billing
+        WHERE synced = 1
+          AND CAST(branch_id AS INTEGER) = ?
+        `
+      )
+      .get(branchId);
+
+    // Today's summary
+    const today = new Date().toISOString().slice(0, 10);
+    const todaySummary = db
+      .prepare(
+        `
+        SELECT 
+          COUNT(*) AS todayBillCount,
+          IFNULL(SUM(grandTotalf), 0) AS todayGrandTotal
+        FROM billing
+        WHERE CAST(branch_id AS INTEGER) = ?
+          AND DATE(billdate) = ?
+          AND synced = 1
+        `
+      )
+      .get(branchId, today);
+
+    // Final result
+    return {
+      totalBills: totalSummary.totalBills || 0,
+      totalGrandTotal: parseFloat(totalSummary.totalGrandTotal || 0).toFixed(2),
+      todayBillCount: todaySummary.todayBillCount || 0,
+      todayGrandTotal: parseFloat(todaySummary.todayGrandTotal || 0).toFixed(2),
+    };
+  } catch (error) {
+    console.error("Error fetching billing summary:", error);
+    throw new Error("Failed to get billing summary");
+  }
+}
+
+export async function getPerformanceSummary(fromDate, toDate) {
+  try {
+    const branchId = branch.id;
+
+    const today = new Date();
+    let from;
+    let to;
+
+    if (fromDate && toDate) {
+      from = new Date(fromDate);
+      to = new Date(toDate);
+    } else {
+      to = today;
+      from = new Date();
+      from.setDate(to.getDate() - 6);
+    }
+
+    const result = [];
+
+    const stmt = db.prepare(`
+      SELECT IFNULL(SUM(grandTotalf), 0) AS amount
+      FROM billing
+      WHERE CAST(branch_id AS INTEGER) = ?
+        AND DATE(billdate) = ?
+        AND synced = 1
+    `);
+    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+      const dateStr = formatDateToYMD(d);
+      const row = stmt.get(branchId, dateStr);
+      result.push({
+        date: getDayName(d),
+        amount: parseFloat(row.amount || 0),
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching performance summary:", error);
+    throw new Error("Failed to fetch performance data");
   }
 }

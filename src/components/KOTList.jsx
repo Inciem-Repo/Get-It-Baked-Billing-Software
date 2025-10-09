@@ -1,51 +1,9 @@
 import { Clock, AlertTriangle, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const mockKOTs = [
-  {
-    id: "1",
-    kotNumber: "KOT-001",
-    branch: "Main Branch",
-    priority: "high",
-    createdTime: "10:30 AM",
-    minutesElapsed: 35,
-    status: "in-progress",
-    items: ["Butter Chicken", "Naan", "Dal Makhani"],
-    notes: "Extra spicy, no onions",
-  },
-  {
-    id: "2",
-    kotNumber: "KOT-002",
-    branch: "Downtown",
-    priority: "medium",
-    createdTime: "10:45 AM",
-    minutesElapsed: 45,
-    status: "pending",
-    items: ["Biryani", "Raita", "Salad"],
-    notes: "Mild spice level",
-  },
-  {
-    id: "3",
-    kotNumber: "KOT-003",
-    branch: "Main Branch",
-    priority: "low",
-    createdTime: "11:00 AM",
-    minutesElapsed: 15,
-    status: "ready",
-    items: ["Paneer Tikka", "Tandoori Roti"],
-  },
-  {
-    id: "4",
-    kotNumber: "KOT-004",
-    branch: "Westside",
-    priority: "high",
-    createdTime: "11:15 AM",
-    minutesElapsed: 32,
-    status: "pending",
-    items: ["Masala Dosa", "Coffee", "Idli Sambar"],
-    notes: "Urgent - VIP table",
-  },
-];
+import { getNewKOTS } from "../service/KOTService";
+import { useAuth } from "../context/AuthContext";
+import { getDeliveryStatusMessage } from "../lib/helper";
 
 const priorityColors = {
   high: "bg-red-100 text-red-800 border-red-200",
@@ -62,6 +20,39 @@ const statusColors = {
 
 export function KOTList() {
   const navigate = useNavigate();
+  const [KOTDatails, setKOTDetails] = useState([]);
+  const { branchInfo } = useAuth();
+  const fetchLastKot = async () => {
+    try {
+      const lastKot = await getNewKOTS();
+      console.log(lastKot);
+      setKOTDetails(lastKot);
+      return lastKot;
+    } catch (error) {
+      console.error("Error fetching last KOT:", error);
+      return null;
+    }
+  };
+  useEffect(() => {
+    fetchLastKot();
+  }, []);
+  const getCardStyle = (status, isDelayed = false) => {
+    if (isDelayed) return "bg-red-50 border-red-300 animate-pulse";
+    if (!status) return "bg-gray-100 border-gray-300";
+
+    switch (status.toLowerCase()) {
+      case "pending":
+        return "bg-blue-100 border-blue-500";
+      case "baking":
+        return "bg-yellow-100 border-yellow-500";
+      case "ready":
+        return "bg-green-100 border-green-500";
+      case "cancelled":
+        return "bg-red-100 border-red-500";
+      default:
+        return "bg-gray-100 border-gray-300";
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
@@ -79,29 +70,27 @@ export function KOTList() {
       </div>
       <div className="p-6 h-[400px] overflow-y-auto">
         <div className="space-y-4">
-          {mockKOTs.map((kot) => {
-            const isDelayed = kot.minutesElapsed >= 30;
+          {KOTDatails.map((kot) => {
+            const isDelayed = kot?.minutesElapsed >= 30;
             return (
               <div
-                key={kot.id}
-                className={`p-4 border rounded-lg hover:shadow-md transition-all ${
-                  isDelayed
-                    ? "border-red-300 bg-red-50 animate-pulse"
-                    : "border-gray-200"
-                }`}
+                key={kot?.kotToken}
+                className={`p-4 border rounded-lg hover:shadow-md transition-all ${getCardStyle(
+                  kot?.status
+                )}`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">
-                        {kot.kotNumber}
+                        {kot?.kotToken}
                       </span>
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full border ${
-                          priorityColors[kot.priority]
+                          priorityColors[kot?.priority]
                         }`}
                       >
-                        {kot.priority.toUpperCase()}
+                        {kot?.priority.toUpperCase()}
                       </span>
                       {isDelayed && (
                         <span className="px-2 py-1 text-xs font-medium rounded-full border bg-red-100 text-red-800 border-red-200">
@@ -110,7 +99,13 @@ export function KOTList() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{kot.branch}</p>
+                    <p className="text-sm text-gray-500">
+                      {kot?.createdBy == 1
+                        ? "Admin"
+                        : branchInfo?.id == kot?.createdBy
+                        ? branchInfo.bname
+                        : branchInfo.id || "N/A"}
+                    </p>
                   </div>
                   <div className="text-right space-y-1">
                     <div
@@ -121,27 +116,25 @@ export function KOTList() {
                       }`}
                     >
                       <Clock className="h-4 w-4" />
-                      {kot.createdTime} ({kot.minutesElapsed} min)
+                      {getDeliveryStatusMessage(
+                        kot.deliveryDate,
+                        kot.deliveryTime,
+                        kot.status
+                      )}
                     </div>
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full border ${
-                        statusColors[kot.status]
+                        statusColors[kot?.status]
                       }`}
                     >
-                      {kot.status.replace("-", " ").toUpperCase()}
+                      {kot?.status.replace("-", " ").toUpperCase()}
                     </span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-base font-semibold text-gray-900">
-                    {kot.items.join(", ")}
+                    {kot?.items.map((item) => item.productName).join(", ")}
                   </div>
-                  {kot.notes && (
-                    <div className="text-sm text-gray-600 italic">
-                      <span className="font-medium">Note: </span>
-                      {kot.notes}
-                    </div>
-                  )}
                 </div>
               </div>
             );

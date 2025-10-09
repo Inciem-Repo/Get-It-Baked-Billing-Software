@@ -15,6 +15,8 @@ import {
   getAllBillHistory,
   getBillingById,
   getBillingDetails,
+  getBillingSummary,
+  getPerformanceSummary,
 } from "./service/billingService.js";
 import pkg from "electron-pos-printer";
 import path from "path";
@@ -27,12 +29,15 @@ import {
   addExpense,
   getExpenseCategories,
   getExpenseDetails,
+  getExpenseSummary,
 } from "./service/reportService.js";
 import {
   addKot,
   generateKotToken,
   getKotByToken,
   getKotOrdersByBranch,
+  getLastKotsByBranch,
+  updateKotInvoiceByToken,
   updateKOTStatusService,
 } from "./service/KOTService.js";
 
@@ -210,6 +215,26 @@ ipcMain.handle("print-invoice-by-id", async (event, { billId, branchInfo }) => {
 ipcMain.handle("get-all-bill-history", (event, conditions) => {
   return getAllBillHistory(conditions);
 });
+ipcMain.handle("billing-getSummary", async (event) => {
+  try {
+    const result = await getBillingSummary();
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+ipcMain.handle(
+  "get-performance-summary",
+  async (event, { fromDate, toDate }) => {
+    try {
+      const summary = await getPerformanceSummary(fromDate, toDate);
+      return summary;
+    } catch (error) {
+      console.error("IPC get-performance-summary error:", error);
+      return [];
+    }
+  }
+);
 
 ipcMain.handle("run-sync", async (event) => {
   try {
@@ -257,6 +282,14 @@ ipcMain.handle("get-expense-categories", async () => {
     return [];
   }
 });
+ipcMain.handle("expense-getSummary", async () => {
+  try {
+    const result = await getExpenseSummary();
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
 
 //KOT
 ipcMain.handle("kot-add", async (event, kotData) => {
@@ -296,5 +329,22 @@ ipcMain.handle("get-kot-by-token", async (event, kotToken) => {
   } catch (error) {
     console.error("IPC get-kot-by-token error:", error);
     return { success: false, message: error.message };
+  }
+});
+ipcMain.handle("updateKOTInvoiceByToken", async (event, data) => {
+  try {
+    const result = await updateKotInvoiceByToken(data.kotToken, data.invoiceId);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+ipcMain.handle("get-last-kot", async (event) => {
+  try {
+    const lastKot = await getLastKotsByBranch();
+    return lastKot;
+  } catch (error) {
+    console.error("IPC get-last-kot error:", error);
+    return null;
   }
 });

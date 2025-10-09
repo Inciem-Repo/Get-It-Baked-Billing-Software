@@ -9,12 +9,20 @@ contextBridge.exposeInMainWorld("api", {
   getCustomers: () => ipcRenderer.invoke("get-customers"),
   getCustomerById: (id) => ipcRenderer.invoke("get-customer-by-id", id),
   addCustomer: (customer) => ipcRenderer.invoke("add-customer", customer),
+
   getBillingDetails: (args) => ipcRenderer.invoke("get-billing-details", args),
   openPrintPreview: (bill) => ipcRenderer.invoke("open-print-preview", bill),
   generateInvoiceNo: (branchId, paymentType) =>
     ipcRenderer.invoke("generate-invoice-no", branchId, paymentType),
   confirmPrint: (data) => ipcRenderer.invoke("confirm-print", data),
   addBilling: (billData) => ipcRenderer.invoke("add-billing", billData),
+  getSummary: () => ipcRenderer.invoke("billing-getSummary"),
+  getPerformanceSummary: (fromDate, toDate) =>
+    ipcRenderer.invoke("get-performance-summary", {
+      fromDate,
+      toDate,
+    }),
+
   searchCustomers: (searchTerm) =>
     ipcRenderer.invoke("search-customers", searchTerm),
   printInvoice: (billId, branchInfo) =>
@@ -29,6 +37,7 @@ contextBridge.exposeInMainWorld("api", {
   savePrinter: (printer) => ipcRenderer.invoke("save-printer", printer),
   expenseGetAll: (conditions) =>
     ipcRenderer.invoke("expense-get-all", conditions),
+  getExpenseSummary: () => ipcRenderer.invoke("expense-getSummary"),
   getExpenseCategories: () => ipcRenderer.invoke("get-expense-categories"),
   addExpense: (expenseData) => ipcRenderer.invoke("expense-add", expenseData),
 
@@ -51,4 +60,7 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("update-kot-status", { kotId, status }),
   getKOTDetailsById: (kotToken) =>
     ipcRenderer.invoke("get-kot-by-token", kotToken),
+  updateKOTInvoiceByToken: (kotToken, invoiceId) =>
+    ipcRenderer.invoke("updateKOTInvoiceByToken", { kotToken, invoiceId }),
+  getLastKot: () => ipcRenderer.invoke("get-last-kot"),
 });
