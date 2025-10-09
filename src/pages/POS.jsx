@@ -20,6 +20,7 @@ import AddCustomerModal from "../components/AddCustomerModal";
 const POS = () => {
   const { branchInfo } = useAuth();
   const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
   const [items, setItems] = useState([
     {
       id: 1,
@@ -321,7 +322,7 @@ const POS = () => {
       toast.error("⚠️ Please select the payment type.");
       return;
     }
-
+    setSaving(true);
     const updatedFormData = {
       ...formData,
       customer: selectedCustomer?.name || formData.customer,
@@ -373,6 +374,9 @@ const POS = () => {
     } catch (error) {
       console.error("Save error:", error);
       toast.error(" Something went wrong while saving the bill.");
+      setSaving(false);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -421,6 +425,7 @@ const POS = () => {
                 onSelect={handleCustomerSelect}
                 value={selectedCustomer}
                 labelKey="name"
+                searchKeys={["mobile"]}
                 fetchItems={async (searchTerm) => {
                   const customers = await getCustomersInfo(searchTerm);
                   return [{ id: 0, name: "Walking Customer" }, ...customers];
@@ -770,25 +775,28 @@ const POS = () => {
               <option>— Select payment Type —</option>
               <option>Cash</option>
               <option>Online</option>
-              <option>Split</option>
+              {/* <option>Split</option> */}
             </select>
           </div>
           <div className="flex space-x-2">
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
               onClick={() => handleSave("save")}
+              disabled={saving}
             >
               Save Details
             </button>
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
               onClick={() => handleSave("saveAndPrint")}
+              disabled={saving}
             >
               Save & Print
             </button>
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
               onClick={() => handleSave("saveAndList")}
+              disabled={saving}
             >
               Save & List
             </button>

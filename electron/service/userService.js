@@ -59,7 +59,7 @@ export function getCustomers() {
 
 export function searchCustomers(searchTerm = "") {
   try {
-    const query = buildSearchQuery("customers", "name", searchTerm);
+    const query = buildSearchQuery("customers", "name", "mobile", searchTerm);
     const rows = db.prepare(query).all();
     return rows;
   } catch (error) {
@@ -69,10 +69,8 @@ export function searchCustomers(searchTerm = "") {
 }
 
 function generateCustomerId(branchId) {
-  const RANGE = 10000000; // 10 million slots per branch
+  const RANGE = 10000000;
   const base = branchId * RANGE;
-
-  // Get the largest customer id inside this branch's range
   const row = db
     .prepare(
       `SELECT MAX(id) AS maxId 
@@ -151,7 +149,10 @@ export async function addCustomer(customer) {
 
         console.log(`Customer added online with liveId=${idToUse}`);
       } catch (err) {
-        console.error("Failed to insert into live DB, fallback to offline:", err.message);
+        console.error(
+          "Failed to insert into live DB, fallback to offline:",
+          err.message
+        );
 
         // Fallback to offline ID
         idToUse = generateCustomerId(branch.id);
@@ -191,7 +192,6 @@ export async function addCustomer(customer) {
     return { success: false, error: err.message };
   }
 }
-
 
 export function getCustomerById(id) {
   try {
