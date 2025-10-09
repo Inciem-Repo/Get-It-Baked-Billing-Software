@@ -28,6 +28,13 @@ import {
   getExpenseCategories,
   getExpenseDetails,
 } from "./service/reportService.js";
+import {
+  addKot,
+  generateKotToken,
+  getKotByToken,
+  getKotOrdersByBranch,
+  updateKOTStatusService,
+} from "./service/KOTService.js";
 
 const settings = new store();
 
@@ -95,8 +102,8 @@ ipcMain.handle("open-print-preview", async (event, billData) => {
   }
   previewWindow = new BrowserWindow({
     width: 350,
-    height: 700, 
-    modal: true, 
+    height: 700,
+    modal: true,
     parent: BrowserWindow.getFocusedWindow(),
     webPreferences: {
       contextIsolation: false,
@@ -248,5 +255,46 @@ ipcMain.handle("get-expense-categories", async () => {
   } catch (err) {
     console.error("Error fetching categories:", err);
     return [];
+  }
+});
+
+//KOT
+ipcMain.handle("kot-add", async (event, kotData) => {
+  try {
+    const result = addKot(kotData);
+    return { success: true, data: result };
+  } catch (err) {
+    console.error("Failed to add KOT:", err);
+    return { success: false, message: err.message };
+  }
+});
+ipcMain.handle("kot-generate-token", async (event) => {
+  try {
+    const token = generateKotToken();
+    return token;
+  } catch (err) {
+    console.error("Failed to generate KOT token:", err);
+    return null;
+  }
+});
+ipcMain.handle("kot-getBy-Branch", async (event) => {
+  return await getKotOrdersByBranch();
+});
+ipcMain.handle("update-kot-status", async (event, { kotId, status }) => {
+  try {
+    const result = await updateKOTStatusService(kotId, status);
+    return { success: true, result };
+  } catch (error) {
+    console.error("Error updating KOT status:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("get-kot-by-token", async (event, kotToken) => {
+  try {
+    const kotData = await getKotByToken(kotToken);
+    return { success: true, data: kotData };
+  } catch (error) {
+    console.error("IPC get-kot-by-token error:", error);
+    return { success: false, message: error.message };
   }
 });

@@ -43,4 +43,12 @@ contextBridge.exposeInMainWorld("api", {
   onDownloadProgress: (cb) =>
     ipcRenderer.on("download_progress", (e, data) => cb(data)),
   onUpdateError: (cb) => ipcRenderer.on("update_error", (e, err) => cb(err)),
+
+  addKot: (kotData) => ipcRenderer.invoke("kot-add", kotData),
+  generateKOTToken: () => ipcRenderer.invoke("kot-generate-token"),
+  getKOTByBranch: () => ipcRenderer.invoke("kot-getBy-Branch"),
+  updateKOTStatus: (kotId, status) =>
+    ipcRenderer.invoke("update-kot-status", { kotId, status }),
+  getKOTDetailsById: (kotToken) =>
+    ipcRenderer.invoke("get-kot-by-token", kotToken),
 });

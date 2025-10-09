@@ -14,11 +14,15 @@ import NumberInput from "../components/common/NumberInput";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { mapBillForPrint } from "../lib/helper";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import AddCustomerModal from "../components/AddCustomerModal";
+import { getKOTDetails } from "../service/KOTService";
 
 const POS = () => {
   const { branchInfo } = useAuth();
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const token = params.get("token");
   const navigate = useNavigate();
   const [items, setItems] = useState([
     {
@@ -137,6 +141,57 @@ const POS = () => {
     };
   }, [items]);
   useEffect(() => {
+    const fetchKOTDetails = async () => {
+      if (!token) return;
+
+      const res = await getKOTDetails(token);
+      if (!res.success) {
+        toast.error("Invalid KOT token");
+        return;
+      }
+      const kotDetails = res.data;
+      const { customerId, deliveryDate, items = [] } = kotDetails;
+
+      let customer = { id: 0, name: "Walking Customer" };
+      if (customerId && customerId !== 0) {
+        const res = await window.api.getCustomerById(customerId);
+        if (res.success && res.customer) {
+          customer = res.customer;
+        }
+      }
+
+      const mappedItems = items.map((i) => ({
+        id: Date.now() + Math.random(),
+        productId: i.productId,
+        productName: i.productName,
+        quantity: i.quantity,
+        unit: i.unit || "",
+        unitPrice: i.unitPrice || 0,
+        taxableValue: i.taxableValue || 0,
+        cgstRate: i.cgstRate || 0,
+        cgstAmount: i.cgstAmount || 0,
+        igstRate: i.igstRate || 0,
+        igstAmount: i.igstAmount || 0,
+        total: i.total || 0,
+      }));
+
+      setSelectedCustomer(customer);
+      setItems(mappedItems);
+      setFormData((prev) => ({
+        ...prev,
+        date: deliveryDate || new Date().toISOString().split("T")[0],
+        customer: customer.name,
+        customerId: customer.id,
+        customerNote: kotDetails.notes || "",
+      }));
+
+      toast.success(`Loaded KOT ${kotDetails.kotToken}`);
+    };
+
+    fetchKOTDetails();
+  }, [token]);
+
+  useEffect(() => {
     const fetchInvoice = async () => {
       const invoice = await handleGenerateInvoice(
         branchInfo.id,
@@ -146,7 +201,6 @@ const POS = () => {
     };
     fetchInvoice();
   }, [branchInfo.id, formData.paymentType]);
-
   useEffect(() => {
     const initTotals = calculateTotals();
     setFormData((prev) => ({
@@ -157,6 +211,13 @@ const POS = () => {
       balanceToCustomer: 0,
     }));
   }, [items]);
+  useEffect(() => {
+    const getProducts = async () => {
+      const result = await getProductsInfo();
+      setProducts(result);
+    };
+    getProducts();
+  }, []);
 
   const addNewRow = () => {
     const newItem = {
@@ -264,14 +325,6 @@ const POS = () => {
   };
 
   const totals = calculateTotals();
-
-  useEffect(() => {
-    const getProducts = async () => {
-      const result = await getProductsInfo();
-      setProducts(result);
-    };
-    getProducts();
-  }, []);
 
   const handleCustomerSelect = (customer) => {
     setSelectedCustomer(customer);
@@ -421,8 +474,10 @@ const POS = () => {
                 onSelect={handleCustomerSelect}
                 value={selectedCustomer}
                 labelKey="name"
+                searchKeys={["mobile"]}
                 fetchItems={async (searchTerm) => {
                   const customers = await getCustomersInfo(searchTerm);
+                  console.log(customers);
                   return [{ id: 0, name: "Walking Customer" }, ...customers];
                 }}
               />

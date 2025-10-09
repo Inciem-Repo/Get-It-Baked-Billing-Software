@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Clock,
   Printer,
@@ -10,81 +10,14 @@ import {
 } from "lucide-react";
 import Header from "../components/layout/Header";
 import { useNavigate } from "react-router-dom";
-
-const mockKOTs = [
-  {
-    id: "1",
-    kotNumber: "KOT-DT-001234",
-    tokenNumber: "A-105",
-    branch: "Downtown Branch",
-    priority: "high",
-    createdTime: "10:30 AM",
-    deliveryTime: "11:00 AM",
-    minutesRemaining: 8,
-    status: "in-progress",
-    items: [
-      { name: "Butter Chicken", quantity: 2, price: 350, notes: "Extra spicy" },
-      { name: "Garlic Naan", quantity: 4, price: 40, notes: "" },
-      { name: "Dal Makhani", quantity: 1, price: 250, notes: "No cream" },
-    ],
-    notes: "Extra spicy, no onions. VIP customer.",
-    deliveryDate: "2025-10-04",
-  },
-  {
-    id: "2",
-    kotNumber: "KOT-DT-001235",
-    tokenNumber: "B-23",
-    branch: "Downtown Branch",
-    priority: "medium",
-    createdTime: "10:45 AM",
-    deliveryTime: "11:30 AM",
-    minutesRemaining: 25,
-    status: "pending",
-    items: [
-      { name: "Chicken Biryani", quantity: 2, price: 280, notes: "Mild spice" },
-      { name: "Raita", quantity: 2, price: 50, notes: "" },
-      { name: "Garden Salad", quantity: 1, price: 80, notes: "No onions" },
-    ],
-    notes: "Mild spice level preferred",
-    deliveryDate: "2025-10-04",
-  },
-  {
-    id: "3",
-    kotNumber: "KOT-UT-001236",
-    tokenNumber: "C-47",
-    branch: "Uptown Branch",
-    priority: "low",
-    createdTime: "11:00 AM",
-    deliveryTime: "12:00 PM",
-    minutesRemaining: 55,
-    status: "ready",
-    items: [
-      { name: "Paneer Tikka", quantity: 1, price: 320, notes: "" },
-      { name: "Tandoori Roti", quantity: 3, price: 30, notes: "" },
-      { name: "Green Chutney", quantity: 2, price: 20, notes: "" },
-    ],
-    notes: "",
-    deliveryDate: "2025-10-04",
-  },
-  {
-    id: "4",
-    kotNumber: "KOT-WS-001237",
-    tokenNumber: "A-12",
-    branch: "Westside Branch",
-    priority: "high",
-    createdTime: "11:15 AM",
-    deliveryTime: "11:45 AM",
-    minutesRemaining: 32,
-    status: "pending",
-    items: [
-      { name: "Masala Dosa", quantity: 2, price: 120, notes: "Extra crispy" },
-      { name: "Filter Coffee", quantity: 2, price: 40, notes: "Strong" },
-      { name: "Idli Sambar", quantity: 1, price: 80, notes: "" },
-    ],
-    notes: "Urgent - VIP table",
-    deliveryDate: "2025-10-04",
-  },
-];
+import { getKotOrders, updateKOTStatusService } from "../service/KOTService";
+import {
+  convertTo12Hour,
+  formatDateTimeTo12Hour,
+  getDeliveryStatusMessage,
+} from "../lib/helper";
+import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 
 const priorityConfig = {
   high: {
@@ -106,63 +39,102 @@ const priorityConfig = {
     icon: Clock,
   },
 };
-
-const statusOptions = [
-  "pending",
-  "in-progress",
-  "ready",
-  "served",
-  "cancelled",
-];
-
+const statusOptions = ["pending", "baking", "ready", "cancelled"];
 const statusColors = {
-  pending: "bg-slate-100 text-slate-700",
-  "in-progress": "bg-blue-500 text-white",
+  pending: "bg-blue-500 text-white",
   ready: "bg-green-500 text-white",
-  served: "bg-purple-500 text-white",
+  baking: "bg-yellow-500 text-white",
   cancelled: "bg-red-500 text-white",
 };
 
 export default function KOTPage() {
-  const [kots, setKots] = useState(mockKOTs);
+  const [kots, setKots] = useState([]);
   const [filter, setFilter] = useState("all");
   const [expandedKot, setExpandedKot] = useState(null);
   const navigate = useNavigate();
+  const { branchInfo } = useAuth();
 
-  const updateKOTStatus = (id, newStatus) => {
-    setKots(
-      kots.map((kot) => (kot.id === id ? { ...kot, status: newStatus } : kot))
-    );
+  useEffect(() => {
+    const fetchKots = async () => {
+      try {
+        const result = await getKotOrders();
+        console.log(result)
+        setKots(result);
+      } catch (error) {
+        console.error("Failed to fetch KOT orders:", error);
+      }
+    };
+    fetchKots();
+  }, []);
+
+  const updateKOTStatus = async (kotId, newStatus) => {
+    const result = await updateKOTStatusService(kotId, newStatus);
+    if (result.success) {
+      setKots((prevKots) =>
+        prevKots.map((kot) =>
+          kot.id === kotId ? { ...kot, status: newStatus } : kot
+        )
+      );
+      toast.success(`KOT status updated to ${newStatus}`);
+    } else {
+      toast.error.error("Failed to update KOT status");
+    }
   };
 
   const printBill = (kot) => {
-    console.log("Printing bill for:", kot.kotNumber);
-    alert(`Printing bill for ${kot.kotNumber}\nToken: ${kot.tokenNumber}`);
+    navigate(`/pos?token=${encodeURIComponent(kot.kotToken)}`);
   };
 
   const toggleAccordion = (kotId) => {
     setExpandedKot(expandedKot === kotId ? null : kotId);
   };
 
-  const getTimeColorClass = (minutesRemaining) => {
-    if (minutesRemaining <= 10) return "text-red-600 bg-red-100 border-red-300";
-    if (minutesRemaining <= 30)
-      return "text-yellow-700 bg-yellow-100 border-yellow-300";
-    return "text-green-600 bg-green-100 border-green-300";
-  };
+  // const getTimeColorClass = (timeOrStatus) => {
+  //   if (!timeOrStatus) return "text-gray-600 bg-gray-100 border-gray-300";
 
-  const getCardStyle = (minutesRemaining) => {
-    if (minutesRemaining <= 10) return "border-l-8 border-l-red-500";
-    if (minutesRemaining <= 30) return "border-l-8 border-l-yellow-500";
-    return "border-l-4 border-l-blue-500";
+  //   const lower = timeOrStatus.toLowerCase();
+  //   if (lower === "ready")
+  //     return "text-green-700 bg-green-100 border-green-300";
+  //   if (lower === "not served") return "text-red-700 bg-red-100 border-red-300";
+  //   const match = timeOrStatus.match(/^(\d+)([dhm])$/);
+  //   if (!match) return "text-gray-600 bg-gray-100 border-gray-300";
+
+  //   const [, value, unit] = match;
+  //   const num = parseInt(value, 10);
+
+  //   if (unit === "d") return "text-blue-700 bg-blue-100 border-blue-300";
+
+  //   if (unit === "h") return "text-yellow-700 bg-yellow-100 border-yellow-300";
+
+  //   if (unit === "m")
+  //     return num < 30
+  //       ? "text-red-700 bg-red-100 border-red-300" // <30m → red
+  //       : "text-green-700 bg-green-100 border-green-300"; // ≥30m → green
+
+  //   return "text-gray-600 bg-gray-100 border-gray-300";
+  // };
+
+  const getCardStyle = (status) => {
+    if (!status) return "border-l-4 border-l-gray-300";
+
+    const lower = status.toLowerCase();
+
+    switch (lower) {
+      case "pending":
+        return "border-l-8 text-blue-500 bg-blue-100  border-l-blue-500";
+      case "baking":
+        return "border-l-8 text-yellow-500 border-l-yellow-500";
+      case "ready":
+        return "border-l-8 text-green-500 bg-green-100 border-l-green-500";
+      case "cancelled":
+        return "border-l-8 text-red-500 bg-red-100 border-l-red-500";
+      default:
+        return "border-l-4 border-l-gray-300";
+    }
   };
 
   const filteredKOTs =
     filter === "all" ? kots : kots.filter((kot) => kot.status === filter);
-
-  const calculateTotal = (items) => {
-    return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  };
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-gray-50">
@@ -207,15 +179,13 @@ export default function KOTPage() {
 
         <div className="space-y-3">
           {filteredKOTs.map((kot) => {
-            const total = calculateTotal(kot.items);
             const PriorityIcon = priorityConfig[kot.priority].icon;
             const isExpanded = expandedKot === kot.id;
-
             return (
               <div
-                key={kot.id}
+                key={kot.kotToken}
                 className={`bg-white rounded-lg shadow-md transition-all ${getCardStyle(
-                  kot.minutesRemaining
+                  kot?.status
                 )}`}
               >
                 <button
@@ -225,22 +195,23 @@ export default function KOTPage() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4 flex-1">
                       <div
-                        className={`px-4 py-2 rounded-lg border-2 font-bold text-center ${getTimeColorClass(
-                          kot.minutesRemaining
+                        className={`px-4 py-2 rounded-lg border-2 font-bold text-center${getCardStyle(
+                          kot?.status
                         )}`}
                       >
                         <div className="text-xl leading-none">
-                          {kot.minutesRemaining}
-                        </div>
-                        <div className="text-xs uppercase tracking-wide mt-1">
-                          min
+                          {getDeliveryStatusMessage(
+                            kot.deliveryDate,
+                            kot.deliveryTime,
+                            kot.status
+                          )}
                         </div>
                       </div>
 
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1">
                           <span className="text-xl font-bold text-slate-900">
-                            {kot.kotNumber}
+                            {kot.kotToken}
                           </span>
                           <div
                             className={`flex items-center gap-1 px-2 py-1 rounded border ${
@@ -260,13 +231,6 @@ export default function KOTPage() {
                               {kot.priority}
                             </span>
                           </div>
-                          <span
-                            className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                              statusColors[kot.status]
-                            }`}
-                          >
-                            {kot.status.replace("-", " ").toUpperCase()}
-                          </span>
                         </div>
                         <div className="flex items-center gap-3 text-sm">
                           <span className="text-slate-600 font-semibold">
@@ -277,13 +241,22 @@ export default function KOTPage() {
                     </div>
 
                     <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-slate-900">
-                          ₹{total.toFixed(2)}
+                      <div className="text-right flex flex-col gap-2">
+                        <div className="text-sm font-semibold text-slate-800">
+                          <span
+                            className={`px-4 py-1 rounded-full text-sm ${
+                              statusColors[kot.status?.toLowerCase()] ||
+                              "bg-slate-200 text-slate-700"
+                            }`}
+                          >
+                            {kot.status || "Pending"}
+                          </span>
                         </div>
-                        <div className="text-xs text-slate-500 flex items-center justify-end gap-1">
-                          <Clock className="w-3 h-3" />
-                          {kot.createdTime} → {kot.deliveryTime}
+                        <div className="text-sm font-bold text-slate-500 mt-1">
+                          {kot.deliveryDate}
+                        </div>
+                        <div className="text-sm font-bold text-slate-500 flex items-center justify-end gap-1 mt-1">
+                          {kot.createdTime} {convertTo12Hour(kot.deliveryTime)}
                         </div>
                       </div>
 
@@ -317,7 +290,7 @@ export default function KOTPage() {
                                 </div>
                                 <div className="flex-1">
                                   <div className="font-semibold text-slate-900">
-                                    {item.name}
+                                    {item.productName}
                                   </div>
                                   {item.notes && (
                                     <div className="text-xs text-slate-500 italic mt-0.5">
@@ -327,7 +300,7 @@ export default function KOTPage() {
                                 </div>
                               </div>
                               <div className="font-bold text-slate-900 ml-4">
-                                ₹{item.price * item.quantity}
+                                ₹{item.total}
                               </div>
                             </div>
                           ))}
@@ -335,13 +308,24 @@ export default function KOTPage() {
                       </div>
 
                       <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-3">
+                          Order Details
+                        </h3>
                         <div className="p-4 bg-white rounded-lg border border-slate-200 text-sm">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-600 font-medium">
+                              Invoice No:
+                            </span>
+                            <span className="text-slate-900 font-semibold">
+                              {kot?.invoiceId || "Not yet billed"}
+                            </span>
+                          </div>
                           <div className="flex justify-between mb-1">
                             <span className="text-slate-600 font-medium">
                               Customer Name:
                             </span>
                             <span className="text-slate-900 font-semibold">
-                              {"john Doe" || "N/A"}
+                              {kot?.customerName || "N/A"}
                             </span>
                           </div>
 
@@ -350,7 +334,27 @@ export default function KOTPage() {
                               Phone Number:
                             </span>
                             <span className="text-slate-900">
-                              {7845478457 || "No phone"}
+                              {kot?.customerMobile || "No phone"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-600 font-medium">
+                              Order Created at :
+                            </span>
+                            <span className="text-slate-900">
+                              {formatDateTimeTo12Hour(kot?.createdAt) || "N/A"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-600 font-medium">
+                              Order Created By :
+                            </span>
+                            <span className="text-slate-900">
+                              {kot?.createdBy == 1
+                                ? "Admin"
+                                : branchInfo?.id == kot?.createdBy
+                                ? branchInfo.bname
+                                : branchInfo.id || "N/A"}
                             </span>
                           </div>
 
@@ -359,7 +363,7 @@ export default function KOTPage() {
                               Order Total:
                             </span>
                             <span className="text-slate-900 text-lg font-bold">
-                              ₹{total?.toFixed(2) || "0.00"}
+                              ₹{kot?.totalAmount || "0.00"}
                             </span>
                           </div>
                         </div>
@@ -367,24 +371,21 @@ export default function KOTPage() {
                           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
                             Update Status
                           </label>
-                          <div className="relative">
-                            <select
-                              value={kot.status}
-                              onChange={(e) =>
-                                updateKOTStatus(kot.id, e.target.value)
-                              }
-                              className={`w-full px-4 py-3 rounded-lg font-semibold text-sm appearance-none pr-10 transition-all ${
-                                statusColors[kot.status]
-                              }`}
-                            >
-                              {statusOptions.map((status) => (
-                                <option key={status} value={status}>
-                                  {status.replace("-", " ").toUpperCase()}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none opacity-50" />
-                          </div>
+                          <select
+                            value={kot.status}
+                            onChange={(e) =>
+                              updateKOTStatus(kot.id, e.target.value)
+                            }
+                            className={`w-full px-4 py-3 rounded-lg font-semibold text-sm appearance-none pr-10 transition-all ${
+                              statusColors[kot.status]
+                            }`}
+                          >
+                            {statusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {status.replace("-", " ").toUpperCase()}
+                              </option>
+                            ))}
+                          </select>
                         </div>
 
                         <div>

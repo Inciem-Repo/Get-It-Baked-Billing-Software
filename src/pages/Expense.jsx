@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import AddExpenseModal from "../components/AddExpenseModal";
-import Header from "../components/layout/header";
+import Header from "../components/layout/Header";
 import { getAllExpenses } from "../service/expenseService";
 import { exportToExcel } from "../lib/helper";
 import toast from "react-hot-toast";

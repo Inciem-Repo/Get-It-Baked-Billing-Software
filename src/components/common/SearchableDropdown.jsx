@@ -17,6 +17,7 @@ const SearchableDropdown = ({
   disabled = false,
   maxHeight = "200px",
   labelKey = "",
+  searchKeys = [],
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -176,10 +177,17 @@ const SearchableDropdown = ({
   useEffect(() => {
     setSelectedItem(value);
   }, [value]);
+
   const displayedItems = fetchItems ? dynamicItems : items;
-  const filteredItems = displayedItems?.filter((item) =>
-    item?.[labelKey]?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+
+  const filteredItems = displayedItems?.filter((item) => {
+    if (!searchTerm) return true;
+    const keysToSearch = new Set([labelKey, ...searchKeys]);
+
+    return Array.from(keysToSearch).some((key) =>
+      item?.[key]?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   useEffect(() => {
     if (inputRef.current) {
@@ -394,7 +402,16 @@ const SearchableDropdown = ({
                           onClick={() => handleSelect(item)}
                           onMouseEnter={() => setHighlightedIndex(index)}
                         >
-                          {item?.[labelKey]}
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="">{item?.[labelKey]}</div>
+                              {searchKeys.includes("mobile") && item.mobile && (
+                                <div className="text-xs text-gray-500">
+                                  {item.mobile}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </li>
                       ))
                     ) : (

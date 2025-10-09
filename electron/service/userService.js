@@ -59,7 +59,7 @@ export function getCustomers() {
 
 export function searchCustomers(searchTerm = "") {
   try {
-    const query = buildSearchQuery("customers", "name", searchTerm);
+    const query = buildSearchQuery("customers", "name", "mobile", searchTerm);
     const rows = db.prepare(query).all();
     return rows;
   } catch (error) {
@@ -119,10 +119,8 @@ export function searchCustomers(searchTerm = "") {
 //   }
 // }
 function generateCustomerId(branchId) {
-  const RANGE = 10000000; // 10 million slots per branch
+  const RANGE = 10000000;
   const base = branchId * RANGE;
-
-  // Get the largest customer id inside this branch's range
   const row = db
     .prepare(
       `SELECT MAX(id) AS maxId 
@@ -134,7 +132,6 @@ function generateCustomerId(branchId) {
   let sequence = 0;
 
   if (row && row.maxId) {
-    // strip out branch prefix → only sequence part
     sequence = row.maxId - base;
   }
 
@@ -145,7 +142,6 @@ export async function addCustomer(customer) {
   try {
     const branch = getUser();
     const customId = generateCustomerId(branch.id);
-    console.log(customId);
     const fields = [
       "id",
       "branch_id",
@@ -186,7 +182,6 @@ export async function addCustomer(customer) {
       0,
     ];
 
-    // --- Insert into local (SQLite) ---
     const localQuery = buildInsertQuery("customers", fields);
     db.prepare(localQuery).run(values);
     if (await isOnline()) {

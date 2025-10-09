@@ -1,6 +1,5 @@
 export const createTables = [
-  `
-  CREATE TABLE IF NOT EXISTS billing (
+  `CREATE TABLE IF NOT EXISTS billing (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     invid TEXT NOT NULL,
     totalTaxableValuef REAL DEFAULT 0.00,
@@ -20,8 +19,7 @@ export const createTables = [
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     synced INTEGER DEFAULT 1 
 );`,
-  `
-CREATE TABLE IF NOT EXISTS branches (
+  `CREATE TABLE IF NOT EXISTS branches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   bname TEXT NOT NULL,
   branch_name TEXT NOT NULL,
@@ -38,8 +36,7 @@ CREATE TABLE IF NOT EXISTS branches (
   real_password TEXT NOT NULL
 );
 `,
-  `
-  CREATE TABLE IF NOT EXISTS products (
+  `CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     category_id TEXT NOT NULL,
@@ -55,8 +52,7 @@ CREATE TABLE IF NOT EXISTS branches (
     unit TEXT CHECK(unit IN ('kg', 'grams', 'packets','')),
     obgo TEXT
   )`,
-  `
-  CREATE TABLE IF NOT EXISTS category (
+  `CREATE TABLE IF NOT EXISTS category (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     status INTEGER NOT NULL DEFAULT 1,
@@ -106,8 +102,7 @@ CREATE TABLE IF NOT EXISTS branches (
   date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   synced INTEGER DEFAULT 1 
 );`,
-  `
-CREATE TABLE IF NOT EXISTS expensecategory (
+  `CREATE TABLE IF NOT EXISTS expensecategory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL,
     status INTEGER NOT NULL,
@@ -119,4 +114,55 @@ SELECT * FROM billing WHERE 0;
   `CREATE TABLE IF NOT EXISTS billing_items_archive AS
 SELECT * FROM billing_items WHERE 0;
 `,
+  `CREATE TABLE IF NOT EXISTS kot_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kotToken TEXT NOT NULL UNIQUE,
+    invoiceId TEXT,                
+    branchId INTEGER NOT NULL,     
+    customerId INTEGER,           
+    priority TEXT CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+    deliveryDate TEXT,  
+    createdBy INTEGER,          
+    deliveryTime TEXT,             
+    status TEXT CHECK(status IN ('baking','ready','pending','cancelled')) DEFAULT 'baking',
+    totalAmount REAL DEFAULT 0,
+    synced INTEGER DEFAULT 1,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    isDeleted INTEGER DEFAULT 0,
+    FOREIGN KEY(customerId) REFERENCES customers(id)
+);`,
+  `CREATE TABLE IF NOT EXISTS kot_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kotOrderId TEXT NOT NULL,
+    productId INTEGER NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    unitPrice INTEGER NOT NULL,
+    total REAL NOT NULL,
+    notes TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    isDeleted INTEGER DEFAULT 0,
+    FOREIGN KEY(kotOrderId) REFERENCES kot_orders(kotToken)
+);`,
+  `CREATE TABLE IF NOT EXISTS kot_status_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kotOrderId INTEGER NOT NULL,
+    oldStatus TEXT,
+    newStatus TEXT NOT NULL,
+    changedBy INTEGER,                         
+    changedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(kotOrderId) REFERENCES kot_orders(id),
+    FOREIGN KEY(changedBy) REFERENCES users(id)
+);`,
+  `CREATE TABLE IF NOT EXISTS kot_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    branch_id INTEGER,
+    kot_monitor_url TEXT,
+    reminder_time_minutes INTEGER DEFAULT 10,   
+    sound_file TEXT DEFAULT 'default.mp3',      
+    enable_sound INTEGER DEFAULT 1,                     
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);`,
 ];
