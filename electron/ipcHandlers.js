@@ -15,6 +15,7 @@ import {
   getAllBillHistory,
   getBillingById,
   getBillingDetails,
+  updateBilling,
 } from "./service/billingService.js";
 import pkg from "electron-pos-printer";
 import path from "path";
@@ -89,14 +90,23 @@ ipcMain.handle("add-billing", async (event, billData) => {
   }
 });
 
+ipcMain.handle("update-billing", async (event, billData) => {
+  try {
+    const result = await updateBilling(billData);
+    return { success: true, data: result };
+  } catch (err) {
+    console.error(" Error updating billing:", err.message);
+    return { success: false, error: err.message };
+  }
+});
 ipcMain.handle("open-print-preview", async (event, billData) => {
   if (previewWindow && !previewWindow.isDestroyed()) {
     previewWindow.close();
   }
   previewWindow = new BrowserWindow({
     width: 350,
-    height: 700, 
-    modal: true, 
+    height: 700,
+    modal: true,
     parent: BrowserWindow.getFocusedWindow(),
     webPreferences: {
       contextIsolation: false,
@@ -202,6 +212,14 @@ ipcMain.handle("print-invoice-by-id", async (event, { billId, branchInfo }) => {
 
 ipcMain.handle("get-all-bill-history", (event, conditions) => {
   return getAllBillHistory(conditions);
+});
+ipcMain.handle("get-bill-by-id", async (event, billId) => {
+  try {
+    return getBillingById(billId);
+  } catch (err) {
+    console.error("Error fetching categories:", err);
+    return [];
+  }
 });
 
 ipcMain.handle("run-sync", async (event) => {

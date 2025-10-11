@@ -758,14 +758,14 @@ const POS = () => {
           </div>
         </div>
       </div>
-      <div className="bg-white border-t border-gray-200 px-6 p-4 sticky bottom-0 shadow-lg">
+      <div className="bg-white border-t border-gray-200 px-4 py-2 sticky bottom-0 shadow-md">
         <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">
               Payment Type * [F4+Enter]
             </span>
             <select
-              className="border border-gray-300 rounded-lg px-3 py-2 bg-blue-600 text-white"
+              className="border border-gray-300 rounded-lg px-3 py-3  bg-blue-600 text-white text-sm"
               value={formData.paymentType}
               ref={paymentSelectRef}
               onChange={(e) =>
@@ -775,34 +775,30 @@ const POS = () => {
               <option>— Select payment Type —</option>
               <option>Cash</option>
               <option>Online</option>
-              {/* <option>Split</option> */}
+              <option>Split</option>
             </select>
           </div>
+
           <div className="flex space-x-2">
-            <button
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              onClick={() => handleSave("save")}
-              disabled={saving}
-            >
-              Save Details
-            </button>
-            <button
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              onClick={() => handleSave("saveAndPrint")}
-              disabled={saving}
-            >
-              Save & Print
-            </button>
-            <button
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              onClick={() => handleSave("saveAndList")}
-              disabled={saving}
-            >
-              Save & List
-            </button>
+            {[
+              // { label: "Advance Order", action: "save" },
+              { label: "Save Details", action: "save" },
+              { label: "Save & Print", action: "saveAndPrint" },
+              { label: "Save & List", action: "saveAndList" },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                className="bg-blue-600 text-white px-4 py-4 rounded-lg hover:bg-blue-700 text-sm fl"
+                onClick={() => handleSave(btn.action)}
+                disabled={saving}
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
+
       <AddCustomerModal
         isOpen={showAddCustomerModal}
         onClose={() => setShowAddCustomerModal(false)}

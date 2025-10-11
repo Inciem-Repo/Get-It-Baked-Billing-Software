@@ -44,11 +44,16 @@ export function getBillingById(billId) {
 
   if (!billRow) return null;
   const itemQuery = `
-    SELECT bi.*, p.title as productName
-    FROM billing_items bi
-    LEFT JOIN products p ON bi.item_id = p.id
-    WHERE bi.bill_id = ?
-  `;
+  SELECT 
+    bi.*, 
+    p.title AS productName,
+    p.tax AS tax,
+    p.hsn AS hsn,
+    p.unit AS unit
+  FROM billing_items bi
+  LEFT JOIN products p ON bi.item_id = p.id
+  WHERE bi.bill_id = ?
+`;
   const itemRows = db.prepare(itemQuery).all(billId);
 
   let customer = null;
@@ -259,5 +264,59 @@ export async function addBilling(billData) {
   } catch (err) {
     console.error("Error adding bill:", err.message);
     throw err;
+  }
+}
+export async function updateBilling(billData) {
+  const branch = getUser();
+  const mysqlConn = (await isOnline()) ? await getMySqlConnection() : null;
+
+  try {
+    const existingBill = db
+      .prepare("SELECT * FROM billing WHERE invid = ? AND branch_id = ?")
+      .get(billData.oldInvoiceNumber, branch.id);
+
+    if (!existingBill) {
+      throw new Error(`Invoice ${billData.oldInvoiceNumber} not found.`);
+    }
+    if (mysqlConn) await mysqlConn.beginTransaction();
+    db.prepare(
+      `UPDATE billing 
+       SET invid = ?, paymenttype = ?, synced = 0 
+       WHERE id = ?`
+    ).run(billData.newInvoiceNumber, billData.paymentMethod, existingBill.id);
+    if (mysqlConn) {
+      await mysqlConn.execute(
+        `UPDATE billing 
+         SET invid = ?, paymenttype = ? 
+         WHERE invid = ? AND branch_id = ?`,
+        [
+          billData.newInvoiceNumber,
+          billData.paymentMethod,
+          billData.oldInvoiceNumber,
+          branch.id,
+        ]
+      );
+
+      await mysqlConn.commit();
+    }
+
+    db.prepare("UPDATE billing SET synced = 1 WHERE invid = ?").run(
+      billData.newInvoiceNumber
+    );
+
+    console.log(
+      `Invoice updated: ${billData.oldInvoiceNumber} → ${billData.newInvoiceNumber} (${billData.paymentMethod})`
+    );
+
+    return {
+      success: true,
+      message: "Invoice and payment type updated successfully",
+    };
+  } catch (err) {
+    console.error("Error updating billing:", err.message);
+    if (mysqlConn) await mysqlConn.rollback();
+    throw err;
+  } finally {
+    if (mysqlConn) await mysqlConn.end();
   }
 }

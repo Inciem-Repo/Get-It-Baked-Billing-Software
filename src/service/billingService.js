@@ -57,3 +57,19 @@ export const handleGenerateInvoice = async (branchId, paymentType) => {
     console.error("Failed:", error);
   }
 };
+
+export const getBillDetailsById = async (billId) => {
+  try {
+    return await window.api.getBillDetails(billId);
+  } catch (error) {
+    console.error("Failed:", error);
+  }
+};
+
+export const updateBillDetails = async (billData) => {
+  try {
+    return await window.api.updateBilling(billData);
+  } catch (error) {
+    console.error("Failed:", error);
+  }
+};

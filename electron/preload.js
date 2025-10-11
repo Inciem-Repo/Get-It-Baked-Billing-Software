@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("api", {
   getCustomers: () => ipcRenderer.invoke("get-customers"),
   getCustomerById: (id) => ipcRenderer.invoke("get-customer-by-id", id),
   addCustomer: (customer) => ipcRenderer.invoke("add-customer", customer),
+  updateBilling: (billData) => ipcRenderer.invoke("update-billing", billData),
+  
   getBillingDetails: (args) => ipcRenderer.invoke("get-billing-details", args),
   openPrintPreview: (bill) => ipcRenderer.invoke("open-print-preview", bill),
   generateInvoiceNo: (branchId, paymentType) =>
@@ -19,6 +21,8 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("search-customers", searchTerm),
   printInvoice: (billId, branchInfo) =>
     ipcRenderer.invoke("print-invoice-by-id", { billId, branchInfo }),
+  getBillDetails: (billId) => ipcRenderer.invoke("get-bill-by-id", billId),
+
   getAllBillHistory: (conditions) =>
     ipcRenderer.invoke("get-all-bill-history", conditions),
   runSync: () => ipcRenderer.invoke("run-sync"),

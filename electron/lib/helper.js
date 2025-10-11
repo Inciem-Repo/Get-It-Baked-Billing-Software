@@ -33,7 +33,7 @@ export function mapBillForPrint(bill, branchInfo) {
       price: Number(item.unit_price.toFixed(2)),
       taxPercent: item.productTax
         ? Number(parseFloat(item.productTax).toFixed(2))
-        : 0,
+        : item.tax,
       taxableValue: Number(item.taxable_value.toFixed(2)),
     })),
     totals: {
