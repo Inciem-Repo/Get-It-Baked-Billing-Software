@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld("api", {
   getCustomerById: (id) => ipcRenderer.invoke("get-customer-by-id", id),
   addCustomer: (customer) => ipcRenderer.invoke("add-customer", customer),
   updateBilling: (billData) => ipcRenderer.invoke("update-billing", billData),
-  
+
   getBillingDetails: (args) => ipcRenderer.invoke("get-billing-details", args),
   openPrintPreview: (bill) => ipcRenderer.invoke("open-print-preview", bill),
   generateInvoiceNo: (branchId, paymentType) =>
@@ -47,4 +47,12 @@ contextBridge.exposeInMainWorld("api", {
   onDownloadProgress: (cb) =>
     ipcRenderer.on("download_progress", (e, data) => cb(data)),
   onUpdateError: (cb) => ipcRenderer.on("update_error", (e, err) => cb(err)),
+
+  //advance billing
+  addAdvanceBilling: (billData) =>
+    ipcRenderer.invoke("add-advance-billing", billData),
+  getAdvanceBillingDetails: (args) =>
+    ipcRenderer.invoke("get-advance-billing-details", args),
+  getAdvanceBillingById: (id) =>
+    ipcRenderer.invoke("get-advance-billing-by-id", id),
 });

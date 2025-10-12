@@ -7,11 +7,13 @@ import {
   FileMinus,
   ChevronDown,
   CookingPot,
+  NotebookPen,
 } from "lucide-react";
 
 export const menuItems = [
   { id: "", label: "POS", icon: Receipt },
   { id: "billing-history", label: "Billing History", icon: History },
+  { id: "advance-billing", label: "Advance order", icon: NotebookPen },
   {
     id: "reports",
     label: "Reports",

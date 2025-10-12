@@ -29,6 +29,11 @@ import {
   getExpenseCategories,
   getExpenseDetails,
 } from "./service/reportService.js";
+import {
+  addAdvanceBilling,
+  getAdvanceBillingById,
+  getAdvanceBillingDetails,
+} from "./service/advanceBillingService.js";
 
 const settings = new store();
 
@@ -266,5 +271,36 @@ ipcMain.handle("get-expense-categories", async () => {
   } catch (err) {
     console.error("Error fetching categories:", err);
     return [];
+  }
+});
+
+//advance billing
+ipcMain.handle("add-advance-billing", async (event, billData) => {
+  try {
+    const billIds = await addAdvanceBilling(billData);
+    return { success: true, billIds };
+  } catch (err) {
+    console.error("Error inserting advance billing:", err);
+    return { success: false, error: err.message };
+  }
+});
+ipcMain.handle(
+  "get-advance-billing-details",
+  async (event, { page, limit, filters }) => {
+    try {
+      return await getAdvanceBillingDetails(page, limit, filters);
+    } catch (error) {
+      console.error("Error fetching advance billing details:", error);
+      throw error;
+    }
+  }
+);
+
+ipcMain.handle("get-advance-billing-by-id", async (event, id) => {
+  try {
+    return await getAdvanceBillingById(id);
+  } catch (error) {
+    console.error("Error fetching advance billing details:", error);
+    throw error;
   }
 });

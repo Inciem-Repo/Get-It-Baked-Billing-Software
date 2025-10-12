@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { mapBillForPrint } from "../lib/helper";
 import { useNavigate } from "react-router-dom";
 import AddCustomerModal from "../components/AddCustomerModal";
+import { saveAdvanceBillingInfo } from "../service/advanceBillingService";
 
 const POS = () => {
   const { branchInfo } = useAuth();
@@ -298,13 +299,13 @@ const POS = () => {
               ...row,
               productId: product.id,
               productName: product.title,
-              unitPrice,
+              unitPrice: unitPrice,
               quantity: row.quantity || 1,
               cgstRate,
-              cgstAmount,
+              cgstAmount: Number(cgstAmount.toFixed(2)),
               igstRate,
-              igstAmount,
-              taxableValue,
+              igstAmount: Number(igstAmount.toFixed(2)),
+              taxableValue: Number(taxableValue.toFixed(2)),
               total,
               unit: product.unit || "",
             }
@@ -338,10 +339,16 @@ const POS = () => {
     };
 
     const newBill = { ...updatedFormData, items };
+    console.log(newBill);
     setFormData(updatedFormData);
     setBill(newBill);
+    let result = null;
     try {
-      const result = await saveBillingInfo(newBill);
+      if (type === "advanceOrder") {
+        result = await saveAdvanceBillingInfo(newBill);
+      } else {
+        result = await saveBillingInfo(newBill);
+      }
       if (!result.success) {
         toast.error("Error: " + result.error);
         return;
@@ -367,7 +374,9 @@ const POS = () => {
           resetBillingForm();
           navigate("/billing-history");
           break;
-
+        case "advanceOrder":
+          toast.success("Bill saved successfully");
+          resetBillingForm();
         default:
           console.warn("Unknown save type:", type);
       }
@@ -781,7 +790,7 @@ const POS = () => {
 
           <div className="flex space-x-2">
             {[
-              // { label: "Advance Order", action: "save" },
+              { label: "Advance Order", action: "advanceOrder" },
               { label: "Save Details", action: "save" },
               { label: "Save & Print", action: "saveAndPrint" },
               { label: "Save & List", action: "saveAndList" },

@@ -170,10 +170,9 @@ export async function addBilling(billData) {
         pdflink: "",
         customernote: bill.customerNote,
         advanceamount: bill.advanceAmount || 0,
-        balanceAmount: bill.balanceToCustomer || 0,
+        balanceAmount: bill.balanceAmount || 0,
         synced: 0,
       };
-
       const billingFields = Object.keys(billingData);
       const billingValues = Object.values(billingData);
 
@@ -216,7 +215,6 @@ export async function addBilling(billData) {
           const liveFields = Object.keys(liveBillingData);
           const liveValues = Object.values(liveBillingData);
           const placeholders = liveFields.map(() => "?").join(",");
-
           const liveBillQuery = `INSERT INTO billing (${liveFields.join(
             ","
           )}) VALUES (${placeholders})`;
@@ -248,7 +246,7 @@ export async function addBilling(billData) {
               ","
             )}) VALUES (${placeholders})`;
 
-            await mysqlConn.execute(liveItemQuery, itemValues);
+            const res = await mysqlConn.execute(liveItemQuery, itemValues);
           }
 
           db.prepare("UPDATE billing SET synced = 1 WHERE id = ?").run(billId);

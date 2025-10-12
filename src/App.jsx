@@ -9,6 +9,7 @@ import Expense from "./pages/Expense";
 import PaymentReport from "./pages/PaymentReport";
 import SalesReport from "./pages/SalesReport";
 import CreateKOT from "./pages/CreateKOT";
+import AdvanceOrders from "./pages/AdvanceOrders";
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -40,6 +41,7 @@ function App() {
         <Route path="/payment-report" element={<PaymentReport />} />
         <Route path="/sales-report" element={<SalesReport />} />
         <Route path="/create-kot" element={<CreateKOT />} />
+        <Route path="/advance-billing" element={<AdvanceOrders />} />
       </Routes>
     </div>
   );
