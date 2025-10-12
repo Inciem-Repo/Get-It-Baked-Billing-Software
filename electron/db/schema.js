@@ -99,7 +99,7 @@ export const createTables = [
   expense_payment TEXT NOT NULL,
   category_id INTEGER NOT NULL,
   remarks TEXT,
-  date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  date DATE NOT NULL,
   synced INTEGER DEFAULT 1 
 );`,
   `CREATE TABLE IF NOT EXISTS expensecategory (
@@ -165,4 +165,66 @@ SELECT * FROM billing_items WHERE 0;
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );`,
+  `CREATE TABLE IF NOT EXISTS advance_billing (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    totalTaxableValuef REAL DEFAULT 0.00,
+    totalCgstf REAL DEFAULT 0.00,
+    totalIgstf REAL DEFAULT 0.00,
+    discountPercentf INTEGER DEFAULT 0,
+    grandTotalf REAL DEFAULT 0.00,
+    customer_id TEXT NOT NULL,
+    bill_type TEXT NOT NULL,
+    paymenttype TEXT NOT NULL,
+    billdate TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    customernote TEXT,
+    advanceamount TEXT,
+    balanceAmount TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    synced INTEGER DEFAULT 1
+)`,
+  `CREATE TABLE IF NOT EXISTS advance_billing_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    advance_billing_id INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    qty INTEGER NOT NULL,
+    unit_price REAL NOT NULL,
+    taxable_value REAL,
+    cgst_value REAL,
+    igst_value REAL,
+    total_price REAL NOT NULL,
+    FOREIGN KEY (advance_billing_id) REFERENCES advance_billing(id) ON DELETE CASCADE
+);`,
 ];
+
+
+//   `CREATE TABLE IF NOT EXISTS advance_billing (
+//     id INTEGER PRIMARY KEY AUTOINCREMENT,
+//     totalTaxableValuef REAL DEFAULT 0.00,
+//     totalCgstf REAL DEFAULT 0.00,
+//     totalIgstf REAL DEFAULT 0.00,
+//     discountPercentf INTEGER DEFAULT 0,
+//     grandTotalf REAL DEFAULT 0.00,
+//     customer_id TEXT NOT NULL,
+//     bill_type TEXT NOT NULL,
+//     paymenttype TEXT NOT NULL,
+//     billdate TEXT NOT NULL,
+//     branch_id TEXT NOT NULL,
+//     customernote TEXT,
+//     advanceamount TEXT,
+//     balanceAmount TEXT,
+//     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+//     synced INTEGER DEFAULT 1
+// );`,
+//   `CREATE TABLE IF NOT EXISTS advance_billing_items (
+//     id INTEGER PRIMARY KEY AUTOINCREMENT,
+//     bill_id INTEGER,
+//     item_id INTEGER NOT NULL,
+//     qty INTEGER NOT NULL,
+//     unit_price REAL NOT NULL,
+//     taxable_value REAL,
+//     cgst_value REAL,
+//     igst_value REAL,
+//     total_price REAL NOT NULL
+// );
+// `,

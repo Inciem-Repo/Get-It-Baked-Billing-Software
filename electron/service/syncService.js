@@ -73,7 +73,60 @@ export async function syncTable(
   updateLastSync(localTable);
   return rowsToInsert;
 }
+export async function syncExpense(branchId) {
+  const tableName = "expense";
 
+  const selectQuery = `
+    SELECT * 
+    FROM ${tableName}
+    WHERE branch_id = ${branchId}
+  `;
+
+  const mysqlConn = await getMySqlConnection();
+  const [rows] = await mysqlConn.execute(selectQuery);
+  if (!rows.length) {
+    console.log(`No expenses found for branch ${branchId}`);
+    return [];
+  }
+
+  const rowsToInsert = rows.map((row) => ({
+    ...row,
+    date:
+      typeof row.date === "string"
+        ? row.date.split("T")[0]
+        : row.date instanceof Date
+        ? new Date(row.date.getTime() - row.date.getTimezoneOffset() * 60000)
+            .toISOString()
+            .split("T")[0]
+        : String(row.date).slice(0, 10),
+    synced: 1,
+  }));
+
+  const fields = Object.keys(rowsToInsert[0]);
+  const placeholders = fields.map(() => "?").join(",");
+
+  const insertQuery = `
+    INSERT OR REPLACE INTO ${tableName} (${fields.join(",")})
+    VALUES (${placeholders})
+  `;
+  const insert = db.prepare(insertQuery);
+
+  // Insert into SQLite
+  const insertMany = db.transaction((data) => {
+    for (const row of data) {
+      insert.run(Object.values(row));
+    }
+  });
+
+  insertMany(rowsToInsert);
+
+  console.log(
+    `✅ Synced ${rowsToInsert.length} expenses for branch ${branchId}`
+  );
+  updateLastSync(tableName);
+
+  return rowsToInsert;
+}
 // update the sync time on the db
 function updateLastSync(table) {
   const current = getCurrentMySQLDateTime();
@@ -131,8 +184,6 @@ async function pushLocalToLive(
 
   for (const row of localRows) {
     const { synced, ...liveRow } = row;
-
-    // 🔥 Normalize fields
     if (liveRow.branch_id !== undefined) {
       liveRow.branch_id = String(parseInt(liveRow.branch_id, 10));
     }
@@ -240,7 +291,7 @@ async function reconcileAndResyncBilling(branchId = null) {
         let liveBillId;
         try {
           const [result] = await mysqlConn.execute(query, values);
-          liveBillId = result.insertId; // get the live auto-generated id
+          liveBillId = result.insertId;
         } catch (err) {
           console.error(
             `Reconcile failed for billing.invid=${invid}`,
@@ -257,7 +308,7 @@ async function reconcileAndResyncBilling(branchId = null) {
 
         for (const item of items) {
           const { id: __, synced: ___, bill_id, ...liveItem } = item;
-          liveItem.bill_id = liveBillId; // use the live bill id, not local
+          liveItem.bill_id = liveBillId;
 
           const { query: itemQuery, values: itemValues } = buildUpsertQuery(
             "table_details",
@@ -307,8 +358,6 @@ async function pullBillingForBranch(branchId) {
   const mysqlConn = await getMySqlConnection();
   try {
     const today = new Date().toISOString().slice(0, 10);
-
-    // Get bills from live for this branch + today
     const [billsRaw] = await mysqlConn.execute(
       `SELECT * FROM billing WHERE branch_id = ? AND DATE(billdate) = ?`,
       [branchId, today]
@@ -323,9 +372,9 @@ async function pullBillingForBranch(branchId) {
 
     const bills = billsRaw.map((b) => ({ ...sanitizeRow(b), synced: 1 }));
 
-    // Insert bills manually (skip if invoice exists)
     const insertBills = db.transaction((chunk) => {
       for (const bill of chunk) {
+        // check if invoice already exists locally
         const exists = db
           .prepare(`SELECT 1 FROM billing WHERE invid = ? LIMIT 1`)
           .get(bill.invid);
@@ -334,15 +383,12 @@ async function pullBillingForBranch(branchId) {
           console.log(`Skipping existing bill (invid=${bill.invid})`);
           continue;
         }
-
         try {
-          const fields = Object.keys(bill);
-          const placeholders = fields.map(() => "?").join(", ");
-          const sql = `INSERT INTO billing (${fields.join(
-            ", "
-          )}) VALUES (${placeholders})`;
-
-          db.prepare(sql).run(Object.values(bill));
+          const row = sanitizeRow(bill);
+          const fields = Object.keys(row);
+          const values = Object.values(row);
+          const query = buildInsertOrIgnoreQuery("billing", sanitizeRow(bill));
+          db.prepare(query).run(values);
           console.log(`Inserted bill (invid=${bill.invid})`);
         } catch (err) {
           console.error(`Bill insert failed (invid ${bill.invid}):`, err);
@@ -371,14 +417,11 @@ async function pullBillingForBranch(branchId) {
       const insertItems = db.transaction((items) => {
         for (const item of items) {
           try {
-            const clean = sanitizeRow(item);
-            const fields = Object.keys(clean);
-            const placeholders = fields.map(() => "?").join(", ");
-            const sql = `INSERT OR IGNORE INTO billing_items (${fields.join(
-              ", "
-            )}) VALUES (${placeholders})`;
-
-            db.prepare(sql).run(Object.values(clean));
+            const { query, values } = buildInsertOrIgnoreQuery(
+              "billing_items",
+              sanitizeRow(item)
+            );
+            db.prepare(query).run(values);
           } catch (err) {
             console.error(
               `Item insert failed (bill ${item.bill_id}, item ${item.id}):`,
@@ -395,7 +438,6 @@ async function pullBillingForBranch(branchId) {
     await mysqlConn.end();
   }
 }
-
 // Master sync
 export async function runSync() {
   const branch = getUser();
@@ -403,7 +445,7 @@ export async function runSync() {
   await pushLocalToLive("expense");
   await syncTable("products");
   await syncTable("customers");
-  await syncTable("expense", branch.id, null, "branch_id");
+  await syncExpense(branch.id);
   await reconcileAndResyncBilling(branch.id);
   await pullBillingForBranch(branch.id);
   findMissingBills(branch.id);

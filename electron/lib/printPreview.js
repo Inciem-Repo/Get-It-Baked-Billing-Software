@@ -164,7 +164,7 @@ export function generateBillHTML(bill) {
       if (i === 0 || i === 2 || i === 4) {
         formatted += ",<br>";
       } else if (i < parts.length - 1) {
-        formatted += ","; // normal comma
+        formatted += ",";
       }
     });
 
@@ -223,10 +223,10 @@ export function generateBillHTML(bill) {
           bill.date || new Date().toLocaleDateString("en-IN")
         }</span></div>
         <div class="bill-info-row"><span>Invoice NO :</span><span>${
-          bill.invoice || "INVC14-01840"
+          bill.invoice || "N/A"
         }</span></div>
         <div class="bill-info-row"><span>GST NO :</span><span>${
-          bill.gstNo || "32CQWPP4392J1Z2"
+          bill.gstNo || "N/A"
         }</span></div>
         <div class="bill-info-row"><span>Customer :</span><span>${
           bill.customer || "Walking Customer"
@@ -256,7 +256,7 @@ export function generateBillHTML(bill) {
               <td>${item.name}</td>
               <td class="right">${item.taxableValue || "0.00"}</td>
               <td class="right">${item.qty || 1}</td>
-              <td class="right">${item.taxPercent || 18}</td>
+              <td class="right">${item.taxPercent || "N/A"}</td>
               <td class="right">${((item.qty || 1) * (item.price || 0)).toFixed(
                 2
               )}</td>
@@ -266,12 +266,7 @@ export function generateBillHTML(bill) {
               .join("") ||
             `
             <tr class="item-row">
-              <td>1</td>
-              <td>Candle @ 10</td>
-              <td class="right">8.47</td>
-              <td class="right">1</td>
-              <td class="right">18</td>
-              <td class="right">10.00</td>
+              N/A
             </tr>`
           }
         </tbody>

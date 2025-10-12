@@ -8,12 +8,14 @@ import {
   ChevronDown,
   CookingPot,
   LayoutDashboard,
+  NotebookPen,
 } from "lucide-react";
 
 export const menuItems = [
   { id: "", label: "Dashboard", icon: LayoutDashboard },
   { id: "pos", label: "POS", icon: Receipt },
   { id: "billing-history", label: "Billing History", icon: History },
+  { id: "advance-billing", label: "Advance order", icon: NotebookPen },
   {
     id: "reports",
     label: "Reports",

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Display System</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 222.2 47.4% 11.2%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96%;
+            --secondary-foreground: 222.2 47.4% 11.2%;
+            --muted: 210 40% 96%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96%;
+            --accent-foreground: 222.2 47.4% 11.2%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 222.2 84% 4.9%;
+            --radius: 0.5rem;
+            
+            /* Custom priority colors */
+            --high-priority: 0 84.2% 60.2%;
+            --medium-priority: 38 92% 50%;
+            --low-priority: 142 76% 36%;
+            
+            /* Urgency colors */
+            --urgent: 0 84.2% 60.2%;
+            --warning: 38 92% 50%;
+            --normal: 142 76% 36%;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.5;
+            color: hsl(var(--foreground));
+            background-color: hsl(var(--background));
+        }
+
+        .min-h-screen {
+            min-height: 100vh;
+        }
+
+        .bg-background {
+            background-color: hsl(var(--background));
+        }
+
+        .p-4 {
+            padding: 1rem;
+        }
+
+        .p-8 {
+            padding: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .md\:p-8 {
+                padding: 2rem;
+            }
+        }
+
+        .mb-8 {
+            margin-bottom: 2rem;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .items-start {
+            align-items: flex-start;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .justify-start {
+            justify-content: flex-start;
+        }
+
+        .gap-2 {
+            gap: 0.5rem;
+        }
+
+        .gap-3 {
+            gap: 0.75rem;
+        }
+
+        .gap-6 {
+            gap: 1.5rem;
+        }
+
+        .text-4xl {
+            font-size: 2.25rem;
+            line-height: 2.5rem;
+        }
+
+        .text-5xl {
+            font-size: 3rem;
+            line-height: 1;
+        }
+
+        .text-2xl {
+            font-size: 1.5rem;
+            line-height: 2rem;
+        }
+
+        .text-xl {
+            font-size: 1.25rem;
+            line-height: 1.75rem;
+        }
+
+        .text-lg {
+            font-size: 1.125rem;
+            line-height: 1.75rem;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+        }
+
+        .text-xs {
+            font-size: 0.75rem;
+            line-height: 1rem;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        .font-mono {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        }
+
+        .text-foreground {
+            color: hsl(var(--foreground));
+        }
+
+        .text-muted-foreground {
+            color: hsl(var(--muted-foreground));
+        }
+
+        .text-primary {
+            color: hsl(var(--primary));
+        }
+
+        .text-urgent {
+            color: hsl(var(--urgent));
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .rounded-lg {
+            border-radius: var(--radius);
+        }
+
+        .rounded-md {
+            border-radius: calc(var(--radius) - 2px);
+        }
+
+        .rounded-full {
+            border-radius: 9999px;
+        }
+
+        .border-2 {
+            border-width: 2px;
+        }
+
+        .border {
+            border-width: 1px;
+        }
+
+        .border-l-2 {
+            border-left-width: 2px;
+        }
+
+        .border-border {
+            border-color: hsl(var(--border));
+        }
+
+        .border-urgent {
+            border-color: hsl(var(--urgent));
+        }
+
+        .border-warning {
+            border-color: hsl(var(--warning));
+        }
+
+        .border-accent {
+            border-color: hsl(var(--accent));
+        }
+
+        .bg-card {
+            background-color: hsl(var(--card));
+        }
+
+        .bg-urgent\/10 {
+            background-color: hsl(var(--urgent) / 0.1);
+        }
+
+        .bg-warning\/10 {
+            background-color: hsl(var(--warning) / 0.1);
+        }
+
+        .bg-secondary\/50 {
+            background-color: hsl(var(--secondary) / 0.5);
+        }
+
+        .bg-primary\/10 {
+            background-color: hsl(var(--primary) / 0.1);
+        }
+
+        .bg-background\/50 {
+            background-color: hsl(var(--background) / 0.5);
+        }
+
+        .shadow-md {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        .shadow-urgent\/20 {
+            box-shadow: 0 10px 15px -3px hsl(var(--urgent) / 0.2), 0 4px 6px -4px hsl(var(--urgent) / 0.2);
+        }
+
+        .shadow-warning\/20 {
+            box-shadow: 0 10px 15px -3px hsl(var(--warning) / 0.2), 0 4px 6px -4px hsl(var(--warning) / 0.2);
+        }
+
+        .p-4 {
+            padding: 1rem;
+        }
+
+        .p-2 {
+            padding: 0.5rem;
+        }
+
+        .p-1\.5 {
+            padding: 0.375rem;
+        }
+
+        .px-2 {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .py-1 {
+            padding-top: 0.25rem;
+            padding-bottom: 0.25rem;
+        }
+
+        .py-0\.5 {
+            padding-top: 0.125rem;
+            padding-bottom: 0.125rem;
+        }
+
+        .mb-3 {
+            margin-bottom: 0.75rem;
+        }
+
+        .mt-1 {
+            margin-top: 0.25rem;
+        }
+
+        .space-y-2 > * + * {
+            margin-top: 0.5rem;
+        }
+
+        .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+
+        .duration-300 {
+            transition-duration: 300ms;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Status badge styles */
+        .bg-secondary {
+            background-color: hsl(var(--secondary));
+        }
+
+        .text-secondary-foreground {
+            color: hsl(var(--secondary-foreground));
+        }
+
+        .bg-warning {
+            background-color: hsl(var(--warning));
+        }
+
+        .text-warning-foreground {
+            color: hsl(var(--warning-foreground));
+        }
+
+        .bg-normal {
+            background-color: hsl(var(--normal));
+        }
+
+        .text-normal-foreground {
+            color: hsl(var(--normal-foreground));
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .flex.items-start.justify-between {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .flex.items-center.gap-3:last-child {
+                align-self: flex-end;
+            }
+        }
+
+        .w-6 {
+            width: 1.5rem;
+        }
+
+        .h-6 {
+            height: 1.5rem;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen bg-background p-4 md:p-8">
+        <header class="mb-8">
+            <div class="flex items-center justify-between">
+                <h1 class="text-4xl md:text-5xl font-bold text-foreground">
+                    Kitchen Display System
+                </h1>
+                <div class="flex items-center gap-2 text-muted-foreground">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                    <span class="text-xl font-mono" id="current-time">
+                        Loading...
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex flex-col gap-6" id="orders-container">
+            <!-- Orders will be inserted here by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Hardcoded data
+        const MOCK_ORDERS = [
+            {
+                id: "1",
+                kotToken: "KOT-001",
+                priority: "high",
+                status: "preparing",
+                deliveryTime: new Date(Date.now() + 20 * 60000), // 20 minutes from now
+                items: [
+                    { name: "Margherita Pizza", quantity: 2, notes: "Extra cheese, no basil" },
+                    { name: "Caesar Salad", quantity: 1, notes: "Dressing on side" },
+                    { name: "Garlic Bread", quantity: 3 },
+                ],
+            },
+            {
+                id: "2",
+                kotToken: "KOT-002",
+                priority: "medium",
+                status: "pending",
+                deliveryTime: new Date(Date.now() + 45 * 60000), // 45 minutes from now
+                items: [
+                    { name: "Grilled Chicken", quantity: 1, notes: "Well done" },
+                    { name: "French Fries", quantity: 2 },
+                ],
+            },
+            {
+                id: "3",
+                kotToken: "KOT-003",
+                priority: "high",
+                status: "preparing",
+                deliveryTime: new Date(Date.now() + 15 * 60000), // 15 minutes from now
+                items: [
+                    { name: "Beef Burger", quantity: 2, notes: "No onions, extra pickles" },
+                    { name: "Onion Rings", quantity: 1 },
+                    { name: "Coke", quantity: 2, notes: "No ice" },
+                ],
+            },
+            {
+                id: "4",
+                kotToken: "KOT-004",
+                priority: "low",
+                status: "pending",
+                deliveryTime: new Date(Date.now() + 75 * 60000), // 75 minutes from now
+                items: [
+                    { name: "Pasta Carbonara", quantity: 1 },
+                    { name: "Tiramisu", quantity: 2 },
+                ],
+            },
+        ];
+
+        // Helper functions
+        function getTimeRemaining(deliveryTime, currentTime) {
+            const diff = deliveryTime.getTime() - currentTime.getTime();
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            return { minutes, seconds, totalMinutes: minutes };
+        }
+
+        function getUrgencyClass(totalMinutes) {
+            if (totalMinutes < 30) return "urgent";
+            if (totalMinutes < 60) return "warning";
+            return "normal";
+        }
+
+        function getPriorityColor(priority) {
+            switch (priority) {
+                case "high":
+                    return "hsl(var(--high-priority))";
+                case "medium":
+                    return "hsl(var(--medium-priority))";
+                case "low":
+                    return "hsl(var(--low-priority))";
+                default:
+                    return "hsl(var(--muted))";
+            }
+        }
+
+        function getStatusBadge(status) {
+            const styles = {
+                pending: "bg-secondary text-secondary-foreground",
+                preparing: "bg-warning text-warning-foreground",
+                ready: "bg-normal text-normal-foreground",
+            };
+            return styles[status] || styles.pending;
+        }
+
+        // Render orders
+        function renderOrders() {
+            const currentTime = new Date();
+            const ordersContainer = document.getElementById('orders-container');
+            
+            // Clear existing orders
+            ordersContainer.innerHTML = '';
+            
+            // Add each order to the container
+            MOCK_ORDERS.forEach(order => {
+                const timeRemaining = getTimeRemaining(order.deliveryTime, currentTime);
+                const urgency = getUrgencyClass(timeRemaining.totalMinutes);
+                const priorityColor = getPriorityColor(order.priority);
+                const statusBadge = getStatusBadge(order.status);
+                
+                const orderElement = document.createElement('article');
+                orderElement.className = `order-card rounded-lg p-4 transition-all duration-300 border-2 ${
+                    urgency === 'urgent' ? 'bg-urgent/10 border-urgent shadow-lg shadow-urgent/20' : 
+                    urgency === 'warning' ? 'bg-warning/10 border-warning shadow-lg shadow-warning/20' : 
+                    'bg-card border-border shadow-md'
+                }`;
+                orderElement.setAttribute('data-order-id', order.id);
+                
+                // Create order HTML
+                orderElement.innerHTML = `
+                    <!-- Header -->
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-2xl font-bold text-foreground">
+                                ${order.kotToken}
+                            </h2>
+                            <span
+                                class="px-2 py-1 rounded-full text-xs font-semibold uppercase priority-badge"
+                                style="background-color: ${priorityColor}; color: hsl(var(--background));"
+                            >
+                                ${order.priority}
+                            </span>
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold uppercase ${statusBadge} status-badge">
+                                ${order.status}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            ${timeRemaining.totalMinutes < 30 ? 
+                                '<i data-lucide="alert-circle" class="w-6 h-6 text-urgent animate-pulse urgent-indicator"></i>' : 
+                                ''}
+                            <div class="text-right">
+                                <div class="text-xs text-muted-foreground">Delivery Time</div>
+                                <div class="text-sm font-bold text-foreground delivery-time">
+                                    ${order.deliveryTime.toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Items -->
+                    <div class="space-y-2">
+                        ${order.items.map(item => `
+                            <div class="bg-secondary/50 rounded-md p-2 border border-border">
+                                <div class="flex justify-between items-start">
+                                    <span class="font-semibold text-foreground">
+                                        ${item.name}
+                                    </span>
+                                    <span class="text-lg font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                        x${item.quantity}
+                                    </span>
+                                </div>
+                                ${item.notes ? `
+                                    <div class="mt-1 text-xs text-muted-foreground italic bg-background/50 p-1.5 rounded border-l-2 border-accent">
+                                        Note: ${item.notes}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                ordersContainer.appendChild(orderElement);
+            });
+            
+            // Reinitialize Lucide icons for new elements
+            lucide.createIcons();
+        }
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Update current time every second
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+            
+            // Also update the orders display to reflect time changes
+            renderOrders();
+        }
+        
+        // Initial render
+        updateCurrentTime();
+        
+        // Update time and orders every second
+        setInterval(updateCurrentTime, 1000);
+    </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 export function mapBillForPrint(billData, branchInfo) {
+  console.log(billData);
   return {
     shopName: branchInfo.branch_name || "Shop",
     address: branchInfo.branchaddress || "",
@@ -23,31 +24,24 @@ export function mapBillForPrint(billData, branchInfo) {
     items: billData.items.map((item) => ({
       name: item.productName || item.item,
       qty: item.quantity,
-      price: Number(item.unitPrice.toFixed(2)),
-      taxPercent: item.igstRate + item.cgstRate || 0,
-      taxableValue: Number(item.taxableValue.toFixed(2)),
+      price: item.unitPrice,
+      taxPercent: item.igstRate + item.cgstRate || item.tax,
+      taxableValue: item.taxableValue,
     })),
     totals: {
-      taxableValue: billData.items
-        .reduce((sum, i) => sum + i.taxableValue, 0)
-        .toFixed(2),
-      totalCGST: billData.items
-        .reduce((sum, i) => sum + i.cgstAmount, 0)
-        .toFixed(2),
-      totalSGST: billData.items
-        .reduce((sum, i) => sum + i.cgstAmount, 0)
-        .toFixed(2),
-      grandTotal: billData.amount.toFixed(2),
+      taxableValue: billData.items.reduce((sum, i) => sum + i.taxableValue, 0),
+      totalCGST: billData.items.reduce((sum, i) => sum + i.cgstAmount, 0),
+      totalSGST: billData.items.reduce((sum, i) => sum + i.cgstAmount, 0),
+      grandTotal: billData.amount,
       discountPercent: billData.discount || 0,
-      netTotal: (
+      netTotal:
         (billData.amount || 0) -
-        (billData.amount * (billData.discount || 0)) / 100
-      ).toFixed(2),
+        (billData.amount * (billData.discount || 0)) / 100,
     },
     paymentType: billData.paymentType,
-    advanceAmount: billData.advanceAmount.toFixed(2),
-    balanceToCustomer: billData.balanceToCustomer.toFixed(2),
-    balanceAmount: billData.balanceAmount.toFixed(2),
+    advanceAmount: billData.advanceAmount,
+    balanceToCustomer: billData.balanceToCustomer,
+    balanceAmount: billData.balanceAmount,
   };
 }
 

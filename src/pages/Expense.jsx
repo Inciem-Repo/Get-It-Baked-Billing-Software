@@ -94,6 +94,7 @@ const Expense = () => {
         remarks: expenseData.remarks,
         date: new Date().toISOString().split("T")[0],
       };
+     
       const result = await window.api.addExpense(payload);
       if (result.success) {
         toast.success("Expense added successfully");

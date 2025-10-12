@@ -21,87 +21,32 @@ function getLocalIp() {
   return "localhost";
 }
 
-// Fetch last N KOT orders
+// Example data fetch function
 function getLastKots(limit = 10, branchId = 1) {
   const kotOrders = db
     .prepare(
-      `SELECT ko.*, c.name AS customerName, c.mobile AS customerMobile
-       FROM kot_orders ko
-       LEFT JOIN customers c ON c.id = ko.customerId
-       WHERE ko.branchId = ? AND ko.isDeleted = 0
-       ORDER BY ko.id DESC
-       LIMIT ?`
+      `SELECT * FROM kot_orders WHERE branchId = ? ORDER BY id DESC LIMIT ?`
     )
     .all(branchId, limit);
-
-  const kotItemsStmt = db.prepare(
-    `SELECT ki.*, p.title AS productName
-     FROM kot_items ki
-     LEFT JOIN products p ON p.id = ki.productId
-     WHERE ki.kotOrderId = ? AND ki.isDeleted = 0`
-  );
-
-  return kotOrders.map((kot) => ({
-    ...kot,
-    items: kotItemsStmt.all(kot.kotToken),
-  }));
+  return kotOrders;
 }
 
 export function startServer(branchId = 1) {
   const app = express();
   const server = http.createServer(app);
-  io = new Server(server, {
-    cors: { origin: "*" },
-  });
+  io = new Server(server, { cors: { origin: "*" } });
 
-  // Serve static KOT page
+  // Set EJS as view engine
+  app.set("view engine", "ejs");
+  app.set("views", path.join(__dirname, "views"));
+
+  // Serve static files (CSS, JS, images)
+ app.use(express.static(path.join(__dirname, "../../public")));
+
+  // Kitchen View
   app.get("/kot", (req, res) => {
     const kots = getLastKots(10, branchId);
-
-    let html = `
-      <html>
-        <head>
-          <title>Kitchen Display</title>
-          <style>
-            body { font-family: sans-serif; padding: 20px; }
-            .kot { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
-            .kot h3 { margin: 0; }
-            .item { margin-left: 15px; }
-          </style>
-        </head>
-        <body>
-          <h1>Kitchen Orders</h1>
-          ${kots
-            .map(
-              (kot) => `
-            <div class="kot">
-              <h3>KOT: ${kot.kotToken} - ${kot.customerName || "Walk-in"}</h3>
-              <div>Status: ${kot.status}</div>
-              <div>Items:</div>
-              <ul>
-                ${kot.items
-                  .map(
-                    (item) =>
-                      `<li class="item">${item.productName} x ${item.quantity}</li>`
-                  )
-                  .join("")}
-              </ul>
-            </div>
-          `
-            )
-            .join("")}
-          <script src="/socket.io/socket.io.js"></script>
-          <script>
-            const socket = io();
-            socket.on("new-order", (order) => {
-              alert("New KOT: " + order.kotToken);
-              location.reload(); // reload to show new order
-            });
-          </script>
-        </body>
-      </html>
-    `;
-    res.send(html);
+    res.render("kot", { kots });
   });
 
   io.on("connection", (socket) => {
@@ -113,10 +58,8 @@ export function startServer(branchId = 1) {
   const localIp = getLocalIp();
 
   server.listen(PORT, HOST, () => {
-    console.log(
-      `🚀 KOT server running locally at: http://localhost:${PORT}/kot`
-    );
-    console.log(`🌐 Accessible on network at: http://${localIp}:${PORT}/kot`);
+    console.log(`🚀 KOT View: http://localhost:${PORT}/kot`);
+    console.log(`🌐 Network: http://${localIp}:${PORT}/kot`);
   });
 }
 

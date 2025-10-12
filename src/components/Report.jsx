@@ -22,6 +22,13 @@ const Report = ({
     loadData();
   }, [currentPage, filters]);
 
+  useEffect(() => {
+    if (filters.fromDate || filters.toDate) {
+      setCurrentPage(1);
+      loadData();
+    }
+  }, [filters.fromDate, filters.toDate]);
+
   async function loadData() {
     const res = await fetchData(currentPage, itemsPerPage, filters);
     if (res) {

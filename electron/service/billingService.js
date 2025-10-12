@@ -4,7 +4,6 @@ import {
   buildBillHistorySelectQuery,
   buildCountQuery,
   buildGrandTotalQuery,
-  buildInsertOrIgnoreQuery,
   buildInsertQuery,
   buildSelectQuery,
 } from "../lib/buildQueries.js";
@@ -42,81 +41,22 @@ export async function getBillingDetails(page = 1, limit = 10, filters = {}) {
     filters,
   };
 }
-// keep for reuse
-// export function addBilling(billData) {
-//   try {
-//     const branch = getUser();
-//     const billingData = {
-//       invid: billData.invoiceNo,
-//       totalTaxableValuef: billData.totalTaxableValue || 0,
-//       totalCgstf: billData.totalCGST || 0,
-//       totalIgstf: billData.totalIGST || 0,
-//       discountPercentf: billData.discount || 0,
-//       grandTotalf: billData.amount || 0,
-//       customer_id: billData.customerId,
-//       bill_type: "sale",
-//       paymenttype: billData.paymentType || "",
-//       billdate: billData.date,
-//       branch_id: branch.id,
-//       pdflink: "",
-//       customernote: billData.customerNote,
-//       advanceamount: billData.advanceAmount || 0,
-//       balanceAmount: billData.balanceToCustomer || 0,
-//       synced: 0,
-//     };
-
-//     // ✅ Extract keys and values
-//     const billingFields = Object.keys(billingData);
-//     const billingValues = Object.values(billingData);
-
-//     // ✅ Pass only fields array to buildInsertQuery
-//     const billingQuery = buildInsertQuery("billing", billingFields);
-
-//     const result = db.prepare(billingQuery).run(billingValues);
-//     const billId = result.lastInsertRowid;
-
-//     if (!billId) {
-//       throw new Error("Bill insert failed — invoice may already exist.");
-//     }
-
-//     // Insert items
-//     for (const item of billData.items) {
-//       const itemData = {
-//         bill_id: billId,
-//         item_id: item.productId,
-//         qty: item.quantity,
-//         unit_price: item.unitPrice,
-//         taxable_value: item.taxableValue,
-//         cgst_value: item.cgstAmount,
-//         igst_value: item.igstAmount,
-//         total_price: item.total,
-//       };
-
-//       const itemFields = Object.keys(itemData);
-//       const itemValues = Object.values(itemData);
-
-//       const itemQuery = buildInsertQuery("billing_items", itemFields);
-//       db.prepare(itemQuery).run(itemValues);
-//     }
-
-//     return billId;
-//   } catch (err) {
-//     console.error("❌ Error adding bill:", err.message);
-//     throw err;
-//   }
-// }
-
 export function getBillingById(billId) {
   const billQuery = buildSelectQuery("billing", { id: billId });
   const billRow = db.prepare(billQuery).get();
 
   if (!billRow) return null;
   const itemQuery = `
-    SELECT bi.*, p.title as productName
-    FROM billing_items bi
-    LEFT JOIN products p ON bi.item_id = p.id
-    WHERE bi.bill_id = ?
-  `;
+  SELECT 
+    bi.*, 
+    p.title AS productName,
+    p.tax AS tax,
+    p.hsn AS hsn,
+    p.unit AS unit
+  FROM billing_items bi
+  LEFT JOIN products p ON bi.item_id = p.id
+  WHERE bi.bill_id = ?
+`;
   const itemRows = db.prepare(itemQuery).all(billId);
 
   let customer = null;
@@ -141,7 +81,6 @@ export function getAllBillHistory(conditions = {}) {
   });
   return db.prepare(query).all();
 }
-
 export function generateInvoiceNo(branchId, paymentType) {
   let prefix;
 
@@ -183,7 +122,6 @@ export function generateInvoiceNo(branchId, paymentType) {
 
   return `${prefix}-${newNumber}`;
 }
-
 export async function addBilling(billData) {
   try {
     const branch = getUser();
@@ -193,8 +131,6 @@ export async function addBilling(billData) {
     if (billData.paymentType === "Split") {
       const onlineAmount = Number(billData.onlineAmount || 0);
       const cashAmount = Number(billData.cashAmount || 0);
-
-      // Online bill (uses original invoiceNo)
       if (onlineAmount > 0) {
         billsToInsert.push({
           ...billData,
@@ -236,10 +172,9 @@ export async function addBilling(billData) {
         pdflink: "",
         customernote: bill.customerNote,
         advanceamount: bill.advanceAmount || 0,
-        balanceAmount: bill.balanceToCustomer || 0,
+        balanceAmount: bill.balanceAmount || 0,
         synced: 0,
       };
-
       const billingFields = Object.keys(billingData);
       const billingValues = Object.values(billingData);
 
@@ -282,7 +217,6 @@ export async function addBilling(billData) {
           const liveFields = Object.keys(liveBillingData);
           const liveValues = Object.values(liveBillingData);
           const placeholders = liveFields.map(() => "?").join(",");
-
           const liveBillQuery = `INSERT INTO billing (${liveFields.join(
             ","
           )}) VALUES (${placeholders})`;
@@ -314,7 +248,7 @@ export async function addBilling(billData) {
               ","
             )}) VALUES (${placeholders})`;
 
-            await mysqlConn.execute(liveItemQuery, itemValues);
+            const res = await mysqlConn.execute(liveItemQuery, itemValues);
           }
 
           db.prepare("UPDATE billing SET synced = 1 WHERE id = ?").run(billId);
@@ -419,5 +353,61 @@ export async function getPerformanceSummary(fromDate, toDate) {
   } catch (error) {
     console.error("Error fetching performance summary:", error);
     throw new Error("Failed to fetch performance data");
+  }}
+
+
+  export async function updateBilling(billData) {
+  const branch = getUser();
+  const mysqlConn = (await isOnline()) ? await getMySqlConnection() : null;
+
+  try {
+    const existingBill = db
+      .prepare("SELECT * FROM billing WHERE invid = ? AND branch_id = ?")
+      .get(billData.oldInvoiceNumber, branch.id);
+
+    if (!existingBill) {
+      throw new Error(`Invoice ${billData.oldInvoiceNumber} not found.`);
+    }
+    if (mysqlConn) await mysqlConn.beginTransaction();
+    db.prepare(
+      `UPDATE billing 
+       SET invid = ?, paymenttype = ?, synced = 0 
+       WHERE id = ?`
+    ).run(billData.newInvoiceNumber, billData.paymentMethod, existingBill.id);
+    if (mysqlConn) {
+      await mysqlConn.execute(
+        `UPDATE billing 
+         SET invid = ?, paymenttype = ? 
+         WHERE invid = ? AND branch_id = ?`,
+        [
+          billData.newInvoiceNumber,
+          billData.paymentMethod,
+          billData.oldInvoiceNumber,
+          branch.id,
+        ]
+      );
+
+      await mysqlConn.commit();
+    }
+
+    db.prepare("UPDATE billing SET synced = 1 WHERE invid = ?").run(
+      billData.newInvoiceNumber
+    );
+
+    console.log(
+      `Invoice updated: ${billData.oldInvoiceNumber} → ${billData.newInvoiceNumber} (${billData.paymentMethod})`
+    );
+
+    return {
+      success: true,
+      message: "Invoice and payment type updated successfully",
+    };
+  } catch (err) {
+    console.error("Error updating billing:", err.message);
+    if (mysqlConn) await mysqlConn.rollback();
+    throw err;
+  } finally {
+    if (mysqlConn) await mysqlConn.end();
+
   }
 }

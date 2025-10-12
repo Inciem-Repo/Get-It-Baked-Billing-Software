@@ -17,6 +17,7 @@ import {
   getBillingDetails,
   getBillingSummary,
   getPerformanceSummary,
+  updateBilling,
 } from "./service/billingService.js";
 import pkg from "electron-pos-printer";
 import path from "path";
@@ -40,6 +41,11 @@ import {
   updateKotInvoiceByToken,
   updateKOTStatusService,
 } from "./service/KOTService.js";
+import {
+  addAdvanceBilling,
+  getAdvanceBillingById,
+  getAdvanceBillingDetails,
+} from "./service/advanceBillingService.js";
 
 const settings = new store();
 
@@ -101,6 +107,15 @@ ipcMain.handle("add-billing", async (event, billData) => {
   }
 });
 
+ipcMain.handle("update-billing", async (event, billData) => {
+  try {
+    const result = await updateBilling(billData);
+    return { success: true, data: result };
+  } catch (err) {
+    console.error(" Error updating billing:", err.message);
+    return { success: false, error: err.message };
+  }
+});
 ipcMain.handle("open-print-preview", async (event, billData) => {
   if (previewWindow && !previewWindow.isDestroyed()) {
     previewWindow.close();
@@ -235,6 +250,14 @@ ipcMain.handle(
     }
   }
 );
+ipcMain.handle("get-bill-by-id", async (event, billId) => {
+  try {
+    return getBillingById(billId);
+  } catch (err) {
+    console.error("Error fetching categories:", err);
+    return [];
+  }
+});
 
 ipcMain.handle("run-sync", async (event) => {
   try {
@@ -282,6 +305,7 @@ ipcMain.handle("get-expense-categories", async () => {
     return [];
   }
 });
+
 ipcMain.handle("expense-getSummary", async () => {
   try {
     const result = await getExpenseSummary();
@@ -346,5 +370,36 @@ ipcMain.handle("get-last-kot", async (event) => {
   } catch (error) {
     console.error("IPC get-last-kot error:", error);
     return null;
+  }
+});
+
+//advance billing
+ipcMain.handle("add-advance-billing", async (event, billData) => {
+  try {
+    const billIds = await addAdvanceBilling(billData);
+    return { success: true, billIds };
+  } catch (err) {
+    console.error("Error inserting advance billing:", err);
+    return { success: false, error: err.message };
+  }
+});
+ipcMain.handle(
+  "get-advance-billing-details",
+  async (event, { page, limit, filters }) => {
+    try {
+      return await getAdvanceBillingDetails(page, limit, filters);
+    } catch (error) {
+      console.error("Error fetching advance billing details:", error);
+      throw error;
+    }
+  }
+);
+
+ipcMain.handle("get-advance-billing-by-id", async (event, id) => {
+  try {
+    return await getAdvanceBillingById(id);
+  } catch (error) {
+    console.error("Error fetching advance billing details:", error);
+    throw error;
   }
 });

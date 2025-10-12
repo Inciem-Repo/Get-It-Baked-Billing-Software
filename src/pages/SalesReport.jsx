@@ -2,7 +2,7 @@ import React from "react";
 import Report from "../components/Report";
 import { useAuth } from "../context/AuthContext";
 import { getBillingInfo, getBillingInvoice } from "../service/billingService";
-import Header from "../components/layout/header";
+import Header from "../components/layout/Header";
 
 function SalesReport() {
   const { branchInfo } = useAuth();

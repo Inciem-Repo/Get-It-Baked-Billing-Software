@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, X, Save, ShoppingCart } from "lucide-react";
-import Header from "../components/layout/Header";
+
 import SearchableDropdown from "../components/common/SearchableDropdown";
 import { getCustomersInfo } from "../service/userService";
 import { getProductsInfo } from "../service/productsService";
@@ -8,6 +8,7 @@ import { createKot, getKotToken } from "../service/KOTService";
 import toast from "react-hot-toast";
 import AddCustomerModal from "../components/AddCustomerModal";
 import { useAuth } from "../context/AuthContext";
+import Header from "../components/layout/Header";
 
 export default function CreateKOT() {
   const [priority, setPriority] = useState("medium");

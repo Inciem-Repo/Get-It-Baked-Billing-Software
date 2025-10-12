@@ -83,3 +83,19 @@ export const getBranchPerformanceSummary = async (fromDate, toDate) => {
     return { success: false, message: "Something went wrong." };
   }
 };
+
+export const getBillDetailsById = async (billId) => {
+  try {
+    return await window.api.getBillDetails(billId);
+  } catch (error) {
+    console.error("Failed:", error);
+  }
+};
+
+export const updateBillDetails = async (billData) => {
+  try {
+    return await window.api.updateBilling(billData);
+  } catch (error) {
+    console.error("Failed:", error);
+  }
+};
