@@ -394,6 +394,7 @@ const POS = () => {
             <div className="relative">
               <input
                 type="date"
+                readOnly
                 value={formData.date}
                 onChange={(e) =>
                   setFormData({ ...formData, date: e.target.value })
@@ -558,13 +559,14 @@ const POS = () => {
                       <input
                         type="number"
                         min="0"
+                        step="0.01"
                         className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-center"
                         value={item.quantity}
                         onChange={(e) =>
                           updateItem(
                             item.id,
                             "quantity",
-                            Math.max(0, parseInt(e.target.value) || 0)
+                            Math.max(0, parseFloat(e.target.value) || 0)
                           )
                         }
                       />
@@ -775,7 +777,7 @@ const POS = () => {
               <option>— Select payment Type —</option>
               <option>Cash</option>
               <option>Online</option>
-              <option>Split</option>
+              {/* <option>Split</option> */}
             </select>
           </div>
 
