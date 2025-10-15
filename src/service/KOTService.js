@@ -75,3 +75,33 @@ export async function getNewKOTS(kotToken, invoiceId) {
     return null;
   }
 }
+
+export async function getKotConfig() {
+  try {
+    const response = await window.api.getKotConfig();
+    return response;
+  } catch (error) {
+    console.error("Failed to fetch KOT configuration:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function insertKotConfig(data) {
+  try {
+    const response = await window.api.insertKotConfig(data);
+    return response;
+  } catch (error) {
+    console.error("Failed to insert KOT configuration:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function updateKotConfig(data) {
+  try {
+    const response = await window.api.updateKotConfig(data);
+    return response;
+  } catch (error) {
+    console.error("Failed to update KOT configuration:", error);
+    return { success: false, message: error.message };
+  }
+}

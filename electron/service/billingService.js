@@ -11,8 +11,6 @@ import { formatDateToYMD, getDayName } from "../lib/helper.js";
 import { getUser } from "./userService.js";
 import isOnline from "is-online";
 
-let branch = getUser();
-
 export async function getBillingDetails(page = 1, limit = 10, filters = {}) {
   const offset = (page - 1) * limit;
 
@@ -227,7 +225,6 @@ export async function addBilling(billData) {
           );
 
           const liveBillId = liveResult.insertId;
-
           // Insert items into live DB
           for (const item of bill.items) {
             const itemData = {
@@ -269,6 +266,7 @@ export async function addBilling(billData) {
 
 export async function getBillingSummary() {
   try {
+    const branch = getUser();
     const branchId = branch.id;
 
     // Total summary
@@ -316,6 +314,7 @@ export async function getBillingSummary() {
 
 export async function getPerformanceSummary(fromDate, toDate) {
   try {
+    const branch = getUser();
     const branchId = branch.id;
 
     const today = new Date();
@@ -353,10 +352,10 @@ export async function getPerformanceSummary(fromDate, toDate) {
   } catch (error) {
     console.error("Error fetching performance summary:", error);
     throw new Error("Failed to fetch performance data");
-  }}
+  }
+}
 
-
-  export async function updateBilling(billData) {
+export async function updateBilling(billData) {
   const branch = getUser();
   const mysqlConn = (await isOnline()) ? await getMySqlConnection() : null;
 
@@ -408,6 +407,5 @@ export async function getPerformanceSummary(fromDate, toDate) {
     throw err;
   } finally {
     if (mysqlConn) await mysqlConn.end();
-
   }
 }

@@ -8,6 +8,7 @@ const Report = ({
   columns = [],
   filterOptions = [],
   enableExport = true,
+  refreshKey = 0,
 }) => {
   const [filters, setFilters] = useState({});
   const [showDropdown, setShowDropdown] = useState(null);
@@ -20,14 +21,14 @@ const Report = ({
 
   useEffect(() => {
     loadData();
-  }, [currentPage, filters]);
+  }, [currentPage, filters, refreshKey]);
 
   useEffect(() => {
     if (filters.fromDate || filters.toDate) {
       setCurrentPage(1);
       loadData();
     }
-  }, [filters.fromDate, filters.toDate]);
+  }, [filters.fromDate, filters.toDate, refreshKey]);
 
   async function loadData() {
     const res = await fetchData(currentPage, itemsPerPage, filters);
@@ -82,7 +83,6 @@ const Report = ({
       <div className="px-6 py-3 flex justify-between items-end">
         <div className="flex space-x-6 items-end">
           {" "}
-          {/* Aligns all children to the bottom */}
           {filterOptions.map((f) => (
             <div key={f.key} className="flex flex-col">
               <label className="text-sm font-medium text-gray-700 mb-1">

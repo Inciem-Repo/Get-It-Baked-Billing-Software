@@ -36,13 +36,17 @@ import {
   addKot,
   generateKotToken,
   getKotByToken,
+  getKotConfig,
   getKotOrdersByBranch,
   getLastKotsByBranch,
+  insertKotConfig,
+  updateKotConfig,
   updateKotInvoiceByToken,
   updateKOTStatusService,
 } from "./service/KOTService.js";
 import {
   addAdvanceBilling,
+  convertAdvanceToBilling,
   getAdvanceBillingById,
   getAdvanceBillingDetails,
 } from "./service/advanceBillingService.js";
@@ -373,6 +377,36 @@ ipcMain.handle("get-last-kot", async (event) => {
   }
 });
 
+ipcMain.handle("insert-kot-config", async (event, data) => {
+  try {
+    const result = await insertKotConfig(data);
+    return result;
+  } catch (error) {
+    console.error("IPC insert-kot-config error:", error);
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle("get-kot-config", async (event) => {
+  try {
+    const result = await getKotConfig();
+    return result;
+  } catch (error) {
+    console.error("IPC get-kot-config error:", error);
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle("update-kot-config", async (event, data) => {
+  try {
+    const result = await updateKotConfig(data);
+    return result;
+  } catch (error) {
+    console.error("IPC update-kot-config error:", error);
+    return { success: false, message: error.message };
+  }
+});
+
 //advance billing
 ipcMain.handle("add-advance-billing", async (event, billData) => {
   try {
@@ -401,5 +435,14 @@ ipcMain.handle("get-advance-billing-by-id", async (event, id) => {
   } catch (error) {
     console.error("Error fetching advance billing details:", error);
     throw error;
+  }
+});
+ipcMain.handle("billing-convertAdvance", async (event, args) => {
+  try {
+    const result = await convertAdvanceToBilling(args);
+    return result;
+  } catch (err) {
+    console.error("IPC Error - convertAdvanceToBilling:", err);
+    return { success: false, message: err.message };
   }
 });

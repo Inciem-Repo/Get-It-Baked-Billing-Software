@@ -12,6 +12,7 @@ import CreateKOT from "./pages/CreateKOT";
 import Dashboard from "./pages/Dashboard";
 import KOTPage from "./pages/KOTPage";
 import AdvanceOrders from "./pages/AdvanceOrders";
+import SettingsPage from "./pages/SettingsPage";
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -46,6 +47,7 @@ function App() {
         <Route path="/create-kot" element={<CreateKOT />} />
         <Route path="/kot" element={<KOTPage />} />
         <Route path="/advance-billing" element={<AdvanceOrders />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </div>
   );

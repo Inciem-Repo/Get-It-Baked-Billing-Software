@@ -1,15 +1,18 @@
 import express from "express";
-import http from "http";
-import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
 import os from "os";
-import db from "../db/dbSetup.js";
+import fs from "fs";
+import {
+  getKotConfig,
+  getKotOrdersByBranch,
+  insertKotConfig,
+  updateKOTStatusService,
+} from "../service/KOTService.js";
+import cors from "cors";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-let io;
 
 function getLocalIp() {
   const interfaces = os.networkInterfaces();
@@ -21,48 +24,85 @@ function getLocalIp() {
   return "localhost";
 }
 
-// Example data fetch function
-function getLastKots(limit = 10, branchId = 1) {
-  const kotOrders = db
-    .prepare(
-      `SELECT * FROM kot_orders WHERE branchId = ? ORDER BY id DESC LIMIT ?`
-    )
-    .all(branchId, limit);
-  return kotOrders;
-}
-
-export function startServer(branchId = 1) {
+export function startServer() {
   const app = express();
-  const server = http.createServer(app);
-  io = new Server(server, { cors: { origin: "*" } });
-
-  // Set EJS as view engine
+  app.use(cors({ origin: "*" }));
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "views"));
+  app.use(express.json());
 
-  // Serve static files (CSS, JS, images)
- app.use(express.static(path.join(__dirname, "../../public")));
+  let publicPath = path.join(__dirname, "../../public");
+  if (!fs.existsSync(publicPath)) {
+    publicPath = path.join(process.resourcesPath, "public");
+  }
 
-  // Kitchen View
-  app.get("/kot", (req, res) => {
-    const kots = getLastKots(10, branchId);
-    res.render("kot", { kots });
+  app.use(express.static(publicPath));
+  app.use("/css", express.static(path.join(publicPath, "css")));
+  app.use("/js", express.static(path.join(publicPath, "js")));
+  app.use("/audio", express.static(path.join(publicPath, "audio")));
+
+  app.get("/", (req, res) => {
+    res.send(`Server running. Public path: ${publicPath}`);
+  });
+  app.get("/kot", async (req, res) => {
+    res.render("kot");
+  });
+  app.get("/api/kots", async (req, res) => {
+    try {
+      const kots = await getKotOrdersByBranch();
+      res.json(kots);
+    } catch (error) {
+      console.log(error);
+    }
+  });
+  app.put("/api/kots/:id/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    await updateKOTStatusService(id, status);
+    try {
+      res.json({ success: true, message: "Status updated successfully" });
+    } catch (err) {
+      console.error(err);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to update status" });
+    }
+  });
+  app.get("/api/kots/config", async (req, res) => {
+    try {
+      const result = await getKotConfig();
+      res.json(result);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false, error: error.message });
+    }
   });
 
-  io.on("connection", (socket) => {
-    console.log("✅ Kitchen display connected");
-  });
+  async function setupDefaultKotConfig(localIp, port) {
+    const defaultData = {
+      branch_id: 1,
+      kot_monitor_url: `http://${localIp}:${port}/kot`,
+      reminder_time_minutes: 30,
+      sound_file: "alarm_1",
+      enable_sound: 1,
+    };
+
+    try {
+      await insertKotConfig(defaultData);
+      console.log("✅ KOT configuration setup completed.");
+    } catch (err) {
+      console.error("❌ Error setting up default KOT config:", err);
+    }
+  }
 
   const PORT = 3000;
   const HOST = "0.0.0.0";
   const localIp = getLocalIp();
 
-  server.listen(PORT, HOST, () => {
+  app.listen(PORT, HOST, async () => {
+    await setupDefaultKotConfig(localIp, PORT);
+    console.log(publicPath);
     console.log(`🚀 KOT View: http://localhost:${PORT}/kot`);
     console.log(`🌐 Network: http://${localIp}:${PORT}/kot`);
   });
-}
-
-export function broadcastOrder(order) {
-  if (io) io.emit("new-order", order);
 }

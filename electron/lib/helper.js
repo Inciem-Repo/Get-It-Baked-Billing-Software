@@ -6,55 +6,59 @@ export function md5(value) {
   return crypto.createHash("md5").update(value).digest("hex");
 }
 
-export function mapBillForPrint(billData, branchInfo) {
+export function mapBillForPrint(bill, branchInfo) {
   return {
     shopName: branchInfo.branch_name || "Shop",
     address: branchInfo.branchaddress || "",
     mobile: branchInfo.bnumber,
     email: branchInfo.Email,
     date:
-      new Date(billData.date).toLocaleDateString("en-IN", {
+      new Date(bill.billdate).toLocaleDateString("en-IN", {
         day: "2-digit",
         month: "short",
         year: "numeric",
       }) +
       " " +
-      new Date().toLocaleTimeString("en-IN", {
+      new Date(bill.created_at).toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
       }),
-    invoice: billData.invoiceNo,
-    customer: billData.customer || "Walking Customer",
+    invoice: bill.invid,
+    customer: bill.customerName || "Walking Customer",
     gstNo: branchInfo.gst_no || "",
-    items: billData.items.map((item) => ({
-      name: item.productName || item.item,
-      qty: item.quantity,
-      price: Number(item.unitPrice.toFixed(2)),
-      taxPercent: item.igstRate + item.cgstRate || 0,
-      taxableValue: Number(item.taxableValue.toFixed(2)),
+    items: bill.items.map((item) => ({
+      name: item.productName || `Item ${item.item_id}`,
+      qty: item.qty,
+      price: Number(item.unit_price.toFixed(2)),
+      taxPercent: item.productTax
+        ? Number(parseFloat(item.productTax).toFixed(2))
+        : item.tax,
+      taxableValue: Number(item.taxable_value.toFixed(2)),
     })),
     totals: {
-      taxableValue: billData.items
-        .reduce((sum, i) => sum + i.taxableValue, 0)
+      taxableValue: bill.items
+        .reduce((sum, i) => sum + (i.taxable_value || 0), 0)
         .toFixed(2),
-      totalCGST: billData.items
-        .reduce((sum, i) => sum + i.cgstAmount, 0)
+      totalCGST: bill.items
+        .reduce((sum, i) => sum + (i.cgst_value || 0), 0)
         .toFixed(2),
-      totalSGST: billData.items
-        .reduce((sum, i) => sum + i.cgstAmount, 0)
+      totalSGST: bill.items
+        .reduce((sum, i) => sum + (i.igst_value || 0), 0)
         .toFixed(2),
-      grandTotal: billData.amount.toFixed(2),
-      discountPercent: billData.discount || 0,
+      grandTotal: Number(bill.grandTotalf).toFixed(2),
+      discountPercent: bill.discountPercentf || 0,
       netTotal: (
-        (billData.amount || 0) -
-        (billData.amount * (billData.discount || 0)) / 100
+        (bill.grandTotalf || 0) -
+        (bill.grandTotalf * (bill.discountPercentf || 0)) / 100
       ).toFixed(2),
     },
-    paymentType: billData.paymentType,
-    advanceAmount: billData.advanceAmount.toFixed(2),
-    balanceToCustomer: billData.balanceToCustomer.toFixed(2),
-    balanceAmount: billData.balanceAmount.toFixed(2),
+    paymentType: bill.paymenttype,
+    advanceAmount: Number(bill.advanceamount || 0).toFixed(2),
+    balanceToCustomer: Number(
+      bill.balanceAmount < 0 ? Math.abs(bill.balanceAmount) : 0
+    ).toFixed(2),
+    balanceAmount: Number(bill.balanceAmount || 0).toFixed(2),
   };
 }
 

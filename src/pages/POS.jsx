@@ -457,6 +457,7 @@ const POS = () => {
             <div className="relative">
               <input
                 type="date"
+                readOnly
                 value={formData.date}
                 onChange={(e) =>
                   setFormData({ ...formData, date: e.target.value })

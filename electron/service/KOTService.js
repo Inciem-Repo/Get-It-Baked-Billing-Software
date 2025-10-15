@@ -1,10 +1,15 @@
 import db from "../db/dbSetup.js";
-import { buildInsertQuery, buildUpdateQuery } from "../lib/buildQueries.js";
+import {
+  buildInsertQuery,
+  buildSelectQuery,
+  buildUpdateQuery,
+} from "../lib/buildQueries.js";
 import { getUser } from "./userService.js";
 
 let branch = getUser();
 
 export function generateKotToken() {
+  const branch = getUser();
   const prefix = `KOT${branch.id}`;
 
   const row = db
@@ -96,6 +101,7 @@ export function addKot(kotData) {
   }
 }
 export async function getKotOrdersByBranch() {
+  const branch = getUser();
   const branchId = branch.id;
   try {
     const kotOrders = db
@@ -136,6 +142,7 @@ export async function getKotOrdersByBranch() {
 }
 export async function updateKOTStatusService(kotId, status) {
   try {
+    console.log(kotId, status);
     const stmt = db.prepare(`
       UPDATE kot_orders
       SET status = ?, updatedAt = CURRENT_TIMESTAMP
@@ -215,6 +222,7 @@ export async function updateKotInvoiceByToken(kotToken, invoiceId) {
   }
 }
 export async function getLastKotsByBranch(limit = 5) {
+  const branch = getUser();
   const branchId = branch.id;
   try {
     // Get last `limit` KOTs
@@ -258,5 +266,87 @@ export async function getLastKotsByBranch(limit = 5) {
   } catch (error) {
     console.error("Error fetching last KOTs:", error);
     throw new Error("Failed to fetch last KOTs");
+  }
+}
+
+export function insertKotConfig(data) {
+  const fields = [
+    "branch_id",
+    "kot_monitor_url",
+    "reminder_time_minutes",
+    "sound_file",
+    "enable_sound",
+  ];
+
+  const query = buildInsertQuery("kot_config", fields);
+  const values = fields.map((f) => data[f]);
+
+  try {
+    // Step 1: Check if a record already exists
+    const selectQuery = buildSelectQuery("kot_config");
+    const existing = db.prepare(selectQuery).get();
+
+    if (existing) {
+      console.log("⚙️ KOT config already exists, skipping insert.");
+      return {
+        success: true,
+        id: existing.id,
+        message: "Config already exists",
+      };
+    }
+
+    // Step 2: Insert new record if not found
+    const stmt = db.prepare(query);
+    const result = stmt.run(values);
+
+    return {
+      success: true,
+      id: result.lastInsertRowid,
+      message: "Config inserted successfully",
+    };
+  } catch (error) {
+    console.error("❌ insertKotConfig error:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+export function getKotConfig() {
+  try {
+    const query = buildSelectQuery("kot_config");
+    const stmt = db.prepare(query);
+    const row = stmt.get();
+    return { success: true, data: row };
+  } catch (err) {
+    console.error("getKotConfig error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export function updateKotConfig(data) {
+  try {
+    const fields = [
+      "kot_monitor_url",
+      "reminder_time_minutes",
+      "sound_file",
+      "enable_sound",
+    ];
+
+    const query = buildUpdateQuery("kot_config", fields);
+
+    const values = fields.map((f) => {
+      const value = data[f];
+      if (typeof value === "boolean") return value ? 1 : 0;
+      return value ?? null;
+    });
+
+    values.push(data.id);
+
+    const stmt = db.prepare(query);
+    const result = stmt.run(...values);
+
+    return { success: true, changes: result.changes };
+  } catch (err) {
+    console.error("updateKotConfig error:", err);
+    return { success: false, error: err.message };
   }
 }

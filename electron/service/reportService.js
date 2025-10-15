@@ -6,8 +6,6 @@ import {
 } from "../lib/buildQueries.js";
 import { getUser } from "./userService.js";
 
-let branch = getUser();
-
 export async function getExpenseDetails(page = 1, limit = 10, filters = {}) {
   const offset = (page - 1) * limit;
   const query = buildExpenseSelectQuery(filters, {
@@ -85,6 +83,7 @@ export function addExpense(expenseData) {
 
 export async function getExpenseSummary() {
   try {
+    const branch = getUser();
     const branchId = branch.id;
 
     // Total expense summary

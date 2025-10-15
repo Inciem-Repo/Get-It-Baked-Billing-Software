@@ -66,8 +66,10 @@ contextBridge.exposeInMainWorld("api", {
   updateKOTInvoiceByToken: (kotToken, invoiceId) =>
     ipcRenderer.invoke("updateKOTInvoiceByToken", { kotToken, invoiceId }),
   getLastKot: () => ipcRenderer.invoke("get-last-kot"),
-  
-  
+  insertKotConfig: (data) => ipcRenderer.invoke("insert-kot-config", data),
+  getKotConfig: () => ipcRenderer.invoke("get-kot-config"),
+  updateKotConfig: (data) => ipcRenderer.invoke("update-kot-config", data),
+
   //advance billing
   addAdvanceBilling: (billData) =>
     ipcRenderer.invoke("add-advance-billing", billData),
@@ -75,4 +77,6 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("get-advance-billing-details", args),
   getAdvanceBillingById: (id) =>
     ipcRenderer.invoke("get-advance-billing-by-id", id),
+  convertAdvanceToBilling: (data) =>
+    ipcRenderer.invoke("billing-convertAdvance", data),
 });

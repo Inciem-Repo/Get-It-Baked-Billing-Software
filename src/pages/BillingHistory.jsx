@@ -166,7 +166,7 @@ const BillingHistory = () => {
   };
   return (
     <>
-      <div className="flex-1 bg-gray-50 overflow-auto">
+      <div className="flex flex-col min-h-screen w-full bg-gray-50">
         <Header title={"Billing History"} />
         <div className=" px-6 py-3">
           <div className="flex items-end justify-between">

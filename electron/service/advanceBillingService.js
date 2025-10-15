@@ -6,13 +6,17 @@ import {
   buildAdvanceGrandTotalQuery,
   buildInsertQuery,
 } from "../lib/buildQueries.js";
-import { generateInvoiceNo } from "./billingService.js";
+import {
+  addBilling,
+  generateInvoiceNo,
+  getBillingById,
+} from "./billingService.js";
 import { getUser } from "./userService.js";
 import isOnline from "is-online";
 
-const branch = getUser();
 
 export async function addAdvanceBilling(billData) {
+  const branch = getUser();
   try {
     const createdIds = [];
     const advanceBillingData = {
@@ -121,12 +125,12 @@ export async function addAdvanceBilling(billData) {
     throw err;
   }
 }
-
 export async function getAdvanceBillingDetails(
   page = 1,
   limit = 10,
   filters = {}
 ) {
+  const branch = getUser();
   const branchId = branch?.id;
   if (!branchId) {
     throw new Error(
@@ -220,6 +224,116 @@ export async function getAdvanceBillingById(id) {
     };
   } catch (err) {
     console.error("Error fetching advance billing:", err.message);
+    return {
+      success: false,
+      message: err.message,
+    };
+  }
+}
+export async function convertAdvanceToBilling({
+  id,
+  invoiceId,
+  paymenttype,
+  receivedAmount,
+}) {
+  try {
+    if (!id) throw new Error("Advance billing ID is required");
+
+    const advanceResult = await getAdvanceBillingById(id);
+    if (!advanceResult.success || !advanceResult.bill) {
+      throw new Error(
+        advanceResult.message || "Failed to fetch advance billing"
+      );
+    }
+
+    const bill = advanceResult.bill;
+    const advancePaid = Number(bill.advanceamount || 0);
+    const balanceAmount = Number(bill.balanceAmount || 0);
+    const received = Number(receivedAmount || 0);
+
+    // 🧮 2. Calculate new totals
+    const newAdvanceAmount = advancePaid + received;
+    const newBalanceAmount = Math.max(balanceAmount - received, 0);
+
+    // 🧾 3. Prepare final billing data
+    const billData = {
+      invoiceNo: invoiceId || bill.invoiceId,
+      totalTaxableValue: bill.totalTaxableValuef || 0,
+      totalCGST: bill.totalCgstf || 0,
+      totalIGST: bill.totalIgstf || 0,
+      discount: bill.discountPercentf || 0,
+      amount: bill.grandTotalf || 0,
+      customerId: bill.customer_id,
+      bill_type: "sale",
+      paymentType: paymenttype || bill.paymenttype,
+      date: bill.billdate,
+      branch_id: bill.branch_id,
+      customerNote: bill.customernote || "",
+      advanceAmount: newAdvanceAmount,
+      balanceAmount: newBalanceAmount,
+      items: bill.items.map((item) => ({
+        productId: item.item_id,
+        productName: item.product_name,
+        quantity: item.qty,
+        unitPrice: item.unit_price,
+        taxableValue: item.taxable_value,
+        cgstAmount: item.cgst_value,
+        igstAmount: item.igst_value,
+        total: item.total_price,
+      })),
+    };
+
+    // 💾 4. Insert new final bill into local DB
+    const createdIds = await addBilling(billData);
+    // 📝 5. Update local advance_billing to “cleared”
+    db.prepare(
+      `UPDATE advance_billing 
+       SET bill_type = 'cleared',
+           advanceamount = ?,
+           balanceAmount = ?,
+           synced = 2 
+       WHERE id = ?`
+    ).run(newAdvanceAmount, newBalanceAmount, id);
+
+    // 🌐 6. Update the live (MySQL) advance_billing if online
+    const online = await isOnline();
+    if (online) {
+      try {
+        const mysqlConn = await getMySqlConnection();
+        await mysqlConn.execute(
+          `
+          UPDATE advance_billing 
+          SET bill_type = 'cleared',
+              advanceamount = ?,
+              balanceAmount = ?
+          WHERE id = ?
+        `,
+          [newAdvanceAmount, newBalanceAmount, id]
+        );
+
+        // Mark local row as synced ✅
+        db.prepare(`UPDATE advance_billing SET synced = 1 WHERE id = ?`).run(
+          id
+        );
+      } catch (err) {
+        console.error(
+          "❌ Failed to sync cleared advance billing:",
+          err.message
+        );
+      }
+    }
+
+    return {
+      success: true,
+      message: "Advance order converted and cleared successfully",
+      billingIds: createdIds,
+      updatedAdvance: {
+        advanceAmount: newAdvanceAmount,
+        balanceAmount: newBalanceAmount,
+      },
+    };
+  } catch (err) {
+    console.error("Error converting advance to billing:", err.message);
     return {
       success: false,
       message: err.message,

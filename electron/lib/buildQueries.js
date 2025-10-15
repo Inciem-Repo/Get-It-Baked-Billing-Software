@@ -197,7 +197,7 @@ export function buildExpenseSelectQuery(conditions = {}, options = {}) {
         whereClauses.push(`e.expense_payment = '${value}'`);
       }
     } else if (["page", "limit"].includes(key)) {
-      continue; 
+      continue;
     } else {
       whereClauses.push(
         typeof value === "string"
@@ -300,6 +300,7 @@ export function getTodayExpense() {
 }
 
 // Advance Billing Query Builders
+
 export function buildAdvanceBillHistorySelectQuery(filters = {}, options = {}) {
   const { fromDate, toDate, branch_id } = filters;
   const {
@@ -312,7 +313,10 @@ export function buildAdvanceBillHistorySelectQuery(filters = {}, options = {}) {
   if (!branch_id)
     throw new Error("branch_id is required to build advance billing query.");
 
-  let whereClauses = [`b.branch_id = '${branch_id}'`];
+  let whereClauses = [
+    `b.branch_id = '${branch_id}'`,
+    `b.bill_type = 'advance'`,
+  ];
 
   if (fromDate && toDate) {
     whereClauses.push(`b.billdate BETWEEN '${fromDate}' AND '${toDate}'`);
@@ -351,10 +355,9 @@ export function buildAdvanceBillHistorySelectQuery(filters = {}, options = {}) {
 
   return query.trim();
 }
-
 export function buildAdvanceCountQuery(filters = {}) {
   const { fromDate, toDate, branch_id } = filters;
-  let whereClauses = [`branch_id = '${branch_id}'`]; 
+  let whereClauses = [`branch_id = '${branch_id}'`, `bill_type = 'advance'`];
 
   if (fromDate && toDate) {
     whereClauses.push(`billdate BETWEEN '${fromDate}' AND '${toDate}'`);
@@ -370,10 +373,9 @@ export function buildAdvanceCountQuery(filters = {}) {
     WHERE ${whereClauses.join(" AND ")}
   `;
 }
-
 export function buildAdvanceGrandTotalQuery(filters = {}) {
   const { fromDate, toDate, branch_id } = filters;
-  let whereClauses = [`branch_id = '${branch_id}'`];
+  let whereClauses = [`branch_id = '${branch_id}'`, `bill_type = 'advance'`];
 
   if (fromDate && toDate) {
     whereClauses.push(`billdate BETWEEN '${fromDate}' AND '${toDate}'`);

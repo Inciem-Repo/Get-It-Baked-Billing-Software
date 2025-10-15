@@ -70,75 +70,84 @@ export function KOTList() {
       </div>
       <div className="p-6 h-[400px] overflow-y-auto">
         <div className="space-y-4">
-          {KOTDatails.map((kot) => {
-            const isDelayed = kot?.minutesElapsed >= 30;
-            return (
-              <div
-                key={kot?.kotToken}
-                className={`p-4 border rounded-lg hover:shadow-md transition-all ${getCardStyle(
-                  kot?.status
-                )}`}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">
-                        {kot?.kotToken}
-                      </span>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full border ${
-                          priorityColors[kot?.priority]
+          {KOTDatails?.length > 0 ? (
+            KOTDatails.map((kot) => {
+              const isDelayed = kot?.minutesElapsed >= 30;
+              return (
+                <div
+                  key={kot?.kotToken}
+                  className={`p-4 border rounded-lg hover:shadow-md transition-all ${getCardStyle(
+                    kot?.status
+                  )}`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">
+                          {kot?.kotToken}
+                        </span>
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full border ${
+                            priorityColors[kot?.priority]
+                          }`}
+                        >
+                          {kot?.priority.toUpperCase()}
+                        </span>
+                        {isDelayed && (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full border bg-red-100 text-red-800 border-red-200">
+                            <AlertTriangle className="h-3 w-3 mr-1 inline" />
+                            DELAYED
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {kot?.createdBy == 1
+                          ? "Admin"
+                          : branchInfo?.id == kot?.createdBy
+                          ? branchInfo.bname
+                          : branchInfo.id || "N/A"}
+                      </p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div
+                        className={`flex items-center gap-1 text-sm ${
+                          isDelayed
+                            ? "text-red-600 font-semibold"
+                            : "text-gray-500"
                         }`}
                       >
-                        {kot?.priority.toUpperCase()}
+                        <Clock className="h-4 w-4" />
+                        {getDeliveryStatusMessage(
+                          kot.deliveryDate,
+                          kot.deliveryTime,
+                          kot.status
+                        )}
+                      </div>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full border ${
+                          statusColors[kot?.status]
+                        }`}
+                      >
+                        {kot?.status.replace("-", " ").toUpperCase()}
                       </span>
-                      {isDelayed && (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full border bg-red-100 text-red-800 border-red-200">
-                          <AlertTriangle className="h-3 w-3 mr-1 inline" />
-                          DELAYED
-                        </span>
-                      )}
                     </div>
-                    <p className="text-sm text-gray-500">
-                      {kot?.createdBy == 1
-                        ? "Admin"
-                        : branchInfo?.id == kot?.createdBy
-                        ? branchInfo.bname
-                        : branchInfo.id || "N/A"}
-                    </p>
                   </div>
-                  <div className="text-right space-y-1">
-                    <div
-                      className={`flex items-center gap-1 text-sm ${
-                        isDelayed
-                          ? "text-red-600 font-semibold"
-                          : "text-gray-500"
-                      }`}
-                    >
-                      <Clock className="h-4 w-4" />
-                      {getDeliveryStatusMessage(
-                        kot.deliveryDate,
-                        kot.deliveryTime,
-                        kot.status
-                      )}
+                  <div className="space-y-2">
+                    <div className="text-base font-semibold text-gray-900">
+                      {kot?.items.map((item) => item.productName).join(", ")}
                     </div>
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full border ${
-                        statusColors[kot?.status]
-                      }`}
-                    >
-                      {kot?.status.replace("-", " ").toUpperCase()}
-                    </span>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="text-base font-semibold text-gray-900">
-                    {kot?.items.map((item) => item.productName).join(", ")}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-gray-500 text-lg mb-2">No KOTs Found</div>
+              <p className="text-gray-400 text-sm">
+                There are no kitchen order tickets to display at the moment.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

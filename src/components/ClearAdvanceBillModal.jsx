@@ -273,7 +273,7 @@ const ClearAdvanceBillModal = ({ isOpen, onClose, billData, onSave }) => {
                 </h3>
 
                 <div className="flex">
-                  {["Online", "Cash", "Split"].map((method) => (
+                  {["Online", "Cash"].map((method) => (
                     <label
                       key={method}
                       className={`flex items-center p-4  cursor-pointer`}

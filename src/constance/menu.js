@@ -9,7 +9,10 @@ import {
   CookingPot,
   LayoutDashboard,
   NotebookPen,
+  Settings,
 } from "lucide-react";
+import KOTSettings from "../components/KOTSettings";
+import PrintSettings from "../components/PrintSettings";
 
 export const menuItems = [
   { id: "", label: "Dashboard", icon: LayoutDashboard },
@@ -28,5 +31,40 @@ export const menuItems = [
   },
 
   { id: "kot", label: "KOT", icon: CookingPot },
-  { id: "printer-settings", label: "Printer Settings", icon: Printer },
+  { id: "settings", label: "Settings", icon: Settings },
+];
+
+export const settingsMenuItems = [
+  {
+    id: "kot",
+    label: "KOT Settings",
+    component: KOTSettings,
+  },
+  {
+    id: "print",
+    label: "Print Settings",
+    component: PrintSettings,
+  },
+  //ref for child routes support
+  // {
+  //   id: "advanced",
+  //   label: "Advanced Settings",
+  //   children: [
+  //     {
+  //       id: "security",
+  //       label: "Security",
+  //       component: SecuritySettings,
+  //     },
+  //     {
+  //       id: "backup",
+  //       label: "Backup & Restore",
+  //       component: BackupSettings,
+  //     },
+  //     {
+  //       id: "system",
+  //       label: "System Settings",
+  //       component: SystemSettings,
+  //     },
+  //   ],
+  // },
 ];

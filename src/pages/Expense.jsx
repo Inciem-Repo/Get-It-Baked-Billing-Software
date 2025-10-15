@@ -157,7 +157,7 @@ const Expense = () => {
   }
 
   return (
-    <div className="flex-1 bg-gray-50 overflow-auto">
+    <div className="flex flex-col min-h-screen w-full bg-gray-50">
       <div className="bg-white">
         <Header title={"Expense Management"} />
         <div className="px-6 py-3">

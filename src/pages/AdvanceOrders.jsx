@@ -5,10 +5,15 @@ import {
   getAdvanceBillingInfo,
   getAdvanceBillingInfoById,
   saveAdvanceBillingInfo,
+  saveAdvanceToBilling,
 } from "../service/advanceBillingService";
 import { Edit } from "lucide-react";
 import ClearAdvanceBillModal from "../components/ClearAdvanceBillModal";
-import { saveBillingInfo, updateBillDetails } from "../service/billingService";
+import {
+  getBillingInvoice,
+  saveBillingInfo,
+  updateBillDetails,
+} from "../service/billingService";
 import { mapBillForPrint } from "../lib/helper";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
@@ -17,16 +22,29 @@ function AdvanceOrders() {
   const { branchInfo } = useAuth();
   const [selectedBill, setSelectedBill] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+   const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleViewInvoice = async (billId) => {
+    try {
+      await getBillingInvoice(billId, branchInfo);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const handleSavePayment = async (type, billInfo) => {
     try {
+      const result = await saveAdvanceToBilling(billInfo);
+      if (!result.success) {
+        toast.success("Something went wrong!");
+      }
+      setRefreshKey((prev) => prev + 1);
+      toast.success("Bill saved successfully");
       switch (type) {
         case "save":
-          toast.success("Bill saved successfully");
           break;
         case "saveAndPrint": {
-          const printableBill = mapBillForPrint(savedBill, branchInfo);
-          await window.api.openPrintPreview(printableBill);
+          await handleViewInvoice(result.billingIds[0]);
           break;
         }
         default:
@@ -52,10 +70,12 @@ function AdvanceOrders() {
 
   return (
     <>
-      <div className="flex-1 bg-gray-50 overflow-auto">
+      <div className="flex flex-col min-h-screen w-full bg-gray-50">
         <Header title={"Advance Orders"} />
         <Report
           title="Advance Billing History"
+          enableExport={false}
+          refreshKey={refreshKey}
           fetchData={async (page, limit, filters) => {
             const appliedFilters = { ...filters };
             const result = await getAdvanceBillingInfo(
