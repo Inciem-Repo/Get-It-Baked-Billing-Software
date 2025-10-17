@@ -1,21 +1,40 @@
+// export async function createKot(kotData) {
+//   try {
+//     const response = await window.api.addKot(kotData);
+
+//     if (!response) {
+//       throw new Error("No response from main process");
+//     }
+
+//     if (!response.success) {
+//       throw new Error(response.message || "Failed to create KOT");
+//     }
+//     return response.data;
+//   } catch (error) {
+//     console.error("KOT Service Error:", error);
+//     throw error;
+//   }
+// }
+
 export async function createKot(kotData) {
   try {
     const response = await window.api.addKot(kotData);
 
-    if (!response) {
-      throw new Error("No response from main process");
-    }
+    if (!response) throw new Error("No response from main process");
 
     if (!response.success) {
+      console.error("🚨 KOT Main Process Error:", response.message);
+      console.error("Stack Trace:", response.stack);
       throw new Error(response.message || "Failed to create KOT");
     }
 
     return response.data;
   } catch (error) {
-    console.error("KOT Service Error:", error);
+    console.error("KOT Service Error (Renderer):", error);
     throw error;
   }
 }
+
 
 export async function getKotToken(branchId) {
   try {

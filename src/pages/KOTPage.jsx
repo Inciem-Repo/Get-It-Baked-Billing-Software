@@ -58,7 +58,7 @@ export default function KOTPage() {
     const fetchKots = async () => {
       try {
         const result = await getKotOrders();
-        console.log(result)
+        console.log(result);
         setKots(result);
       } catch (error) {
         console.error("Failed to fetch KOT orders:", error);
@@ -82,37 +82,12 @@ export default function KOTPage() {
   };
 
   const printBill = (kot) => {
-    navigate(`/pos?token=${encodeURIComponent(kot.kotToken)}`);
+    navigate(`/pos?token=${encodeURIComponent(kot.kotToken)}&type=kot`);
   };
 
   const toggleAccordion = (kotId) => {
     setExpandedKot(expandedKot === kotId ? null : kotId);
   };
-
-  // const getTimeColorClass = (timeOrStatus) => {
-  //   if (!timeOrStatus) return "text-gray-600 bg-gray-100 border-gray-300";
-
-  //   const lower = timeOrStatus.toLowerCase();
-  //   if (lower === "ready")
-  //     return "text-green-700 bg-green-100 border-green-300";
-  //   if (lower === "not served") return "text-red-700 bg-red-100 border-red-300";
-  //   const match = timeOrStatus.match(/^(\d+)([dhm])$/);
-  //   if (!match) return "text-gray-600 bg-gray-100 border-gray-300";
-
-  //   const [, value, unit] = match;
-  //   const num = parseInt(value, 10);
-
-  //   if (unit === "d") return "text-blue-700 bg-blue-100 border-blue-300";
-
-  //   if (unit === "h") return "text-yellow-700 bg-yellow-100 border-yellow-300";
-
-  //   if (unit === "m")
-  //     return num < 30
-  //       ? "text-red-700 bg-red-100 border-red-300" // <30m → red
-  //       : "text-green-700 bg-green-100 border-green-300"; // ≥30m → green
-
-  //   return "text-gray-600 bg-gray-100 border-gray-300";
-  // };
 
   const getCardStyle = (status) => {
     if (!status) return "border-l-4 border-l-gray-300";

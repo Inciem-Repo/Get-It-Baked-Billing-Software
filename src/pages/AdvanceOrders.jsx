@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Report from "../components/Report";
-import Header from "../components/layout/header";
+import Header from "../components/layout/Header";
 import {
   getAdvanceBillingInfo,
   getAdvanceBillingInfoById,
@@ -17,12 +17,14 @@ import {
 import { mapBillForPrint } from "../lib/helper";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 function AdvanceOrders() {
   const { branchInfo } = useAuth();
   const [selectedBill, setSelectedBill] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-   const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const navigate = useNavigate();
 
   const handleViewInvoice = async (billId) => {
     try {
@@ -58,14 +60,15 @@ function AdvanceOrders() {
   };
 
   const handleFetchBillInfo = async (rowId) => {
-    try {
-      const result = await getAdvanceBillingInfoById(rowId);
-      setSelectedBill(result.bill);
-      setIsModalOpen(true);
-      console.log(result);
-    } catch (error) {
-      console.log(error);
-    }
+    // try {
+    //   const result = await getAdvanceBillingInfoById(rowId);
+    //   setSelectedBill(result.bill);
+    //   setIsModalOpen(true);
+    //   console.log(result);
+    // } catch (error) {
+    //   console.log(error);
+    // }
+    navigate(`/pos?token=${encodeURIComponent(rowId)}&type=advanceOrder`);
   };
 
   return (

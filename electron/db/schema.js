@@ -197,7 +197,6 @@ SELECT * FROM billing_items WHERE 0;
 );`,
 ];
 
-
 //   `CREATE TABLE IF NOT EXISTS advance_billing (
 //     id INTEGER PRIMARY KEY AUTOINCREMENT,
 //     totalTaxableValuef REAL DEFAULT 0.00,

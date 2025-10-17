@@ -22,6 +22,20 @@ export const saveBillingInfo = async (billData) => {
   }
 };
 
+export const saveSplitBillingInfo = async (billData) => {
+  try {
+    const result = await window.api.addSplitBill(billData);
+    if (result.success) {
+      return result;
+    } else {
+      console.error("Failed to save bill:", result.message);
+      return { success: false, message: result.message };
+    }
+  } catch (error) {
+    console.error("Billing save error:", error);
+    return { success: false, message: "Something went wrong while saving." };
+  }
+};
 export const getBillingInvoice = async (billId, branchInfo) => {
   try {
     return await window.api.printInvoice(billId, branchInfo);

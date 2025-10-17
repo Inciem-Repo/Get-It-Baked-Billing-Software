@@ -14,12 +14,12 @@ import {
 import { getUser } from "./userService.js";
 import isOnline from "is-online";
 
-
 export async function addAdvanceBilling(billData) {
   const branch = getUser();
   try {
     const createdIds = [];
     const advanceBillingData = {
+      id: generateAdvanceBillId(),
       totalTaxableValuef: billData.totalTaxableValue || 0,
       totalCgstf: billData.totalCGST || 0,
       totalIgstf: billData.totalIGST || 0,
@@ -251,11 +251,11 @@ export async function convertAdvanceToBilling({
     const balanceAmount = Number(bill.balanceAmount || 0);
     const received = Number(receivedAmount || 0);
 
-    // 🧮 2. Calculate new totals
+    // 2. Calculate new totals
     const newAdvanceAmount = advancePaid + received;
     const newBalanceAmount = Math.max(balanceAmount - received, 0);
 
-    // 🧾 3. Prepare final billing data
+    // 3. Prepare final billing data
     const billData = {
       invoiceNo: invoiceId || bill.invoiceId,
       totalTaxableValue: bill.totalTaxableValuef || 0,
@@ -282,10 +282,7 @@ export async function convertAdvanceToBilling({
         total: item.total_price,
       })),
     };
-
-    // 💾 4. Insert new final bill into local DB
     const createdIds = await addBilling(billData);
-    // 📝 5. Update local advance_billing to “cleared”
     db.prepare(
       `UPDATE advance_billing 
        SET bill_type = 'cleared',
@@ -294,8 +291,6 @@ export async function convertAdvanceToBilling({
            synced = 2 
        WHERE id = ?`
     ).run(newAdvanceAmount, newBalanceAmount, id);
-
-    // 🌐 6. Update the live (MySQL) advance_billing if online
     const online = await isOnline();
     if (online) {
       try {
@@ -311,15 +306,11 @@ export async function convertAdvanceToBilling({
           [newAdvanceAmount, newBalanceAmount, id]
         );
 
-        // Mark local row as synced ✅
         db.prepare(`UPDATE advance_billing SET synced = 1 WHERE id = ?`).run(
           id
         );
       } catch (err) {
-        console.error(
-          "❌ Failed to sync cleared advance billing:",
-          err.message
-        );
+        console.error("Failed to sync cleared advance billing:", err.message);
       }
     }
 
@@ -339,4 +330,84 @@ export async function convertAdvanceToBilling({
       message: err.message,
     };
   }
+}
+export async function updateAdvanceBillTypeController(
+  id,
+  billType = "cleared"
+) {
+  try {
+    if (!id) throw new Error("Advance billing ID is required");
+    const localUpdate = db
+      .prepare(
+        "UPDATE advance_billing SET bill_type = ?, synced = 2 WHERE id = ?"
+      )
+      .run(billType, id);
+
+    if (localUpdate.changes === 0)
+      throw new Error("No local record found with the given ID.");
+    const online = await isOnline();
+    if (online) {
+      try {
+        const mysqlConn = await getMySqlConnection();
+        const [rows] = await mysqlConn.execute(
+          "SELECT id FROM advance_billing WHERE id = ?",
+          [id]
+        );
+
+        if (rows.length > 0) {
+          await mysqlConn.execute(
+            "UPDATE advance_billing SET bill_type = ? WHERE id = ?",
+            [billType, id]
+          );
+        } else {
+          const localData = db
+            .prepare("SELECT * FROM advance_billing WHERE id = ?")
+            .get(id);
+
+          if (localData) {
+            const fields = Object.keys(localData);
+            const placeholders = fields.map(() => "?").join(",");
+            await mysqlConn.execute(
+              `INSERT INTO advance_billing (${fields.join(
+                ","
+              )}) VALUES (${placeholders})`,
+              Object.values(localData)
+            );
+          }
+        }
+        db.prepare("UPDATE advance_billing SET synced = 1 WHERE id = ?").run(
+          id
+        );
+      } catch (err) {
+        console.error("Live DB update failed:", err.message);
+      }
+    }
+
+    return { success: true, message: "Bill type updated successfully" };
+  } catch (err) {
+    console.error("updateAdvanceBillTypeController error:", err.message);
+    return { success: false, message: err.message };
+  }
+}
+function generateAdvanceBillId() {
+  const branch = getUser();
+  const branchId = branch.id;
+  const RANGE = 10000000;
+  const base = branchId * RANGE;
+
+  const row = db
+    .prepare(
+      `SELECT MAX(id) AS maxId 
+       FROM advance_billing 
+       WHERE id BETWEEN ? AND ?`
+    )
+    .get(base, base + RANGE - 1);
+
+  let sequence = 0;
+
+  if (row && row.maxId) {
+    sequence = row.maxId - base;
+  }
+
+  return base + (sequence + 1);
 }

@@ -57,6 +57,8 @@ contextBridge.exposeInMainWorld("api", {
   onUpdateError: (cb) => ipcRenderer.on("update_error", (e, err) => cb(err)),
 
   addKot: (kotData) => ipcRenderer.invoke("kot-add", kotData),
+  addSplitBill: (billData) =>
+    ipcRenderer.invoke("billing-addSplitBill", billData),
   generateKOTToken: () => ipcRenderer.invoke("kot-generate-token"),
   getKOTByBranch: () => ipcRenderer.invoke("kot-getBy-Branch"),
   updateKOTStatus: (kotId, status) =>
@@ -79,4 +81,6 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("get-advance-billing-by-id", id),
   convertAdvanceToBilling: (data) =>
     ipcRenderer.invoke("billing-convertAdvance", data),
+  updateAdvanceBillType: (id, billType) =>
+    ipcRenderer.invoke("update-advance-bill-type", id, billType),
 });

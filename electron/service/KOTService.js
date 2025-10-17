@@ -6,8 +6,6 @@ import {
 } from "../lib/buildQueries.js";
 import { getUser } from "./userService.js";
 
-let branch = getUser();
-
 export function generateKotToken() {
   const branch = getUser();
   const prefix = `KOT${branch.id}`;
@@ -36,6 +34,7 @@ export function generateKotToken() {
   return `${prefix}-${newNumber}`;
 }
 export function addKot(kotData) {
+  let branch = getUser();
   const {
     kotToken,
     customer,
@@ -96,8 +95,8 @@ export function addKot(kotData) {
     const result = insertKotTransaction();
     return result;
   } catch (error) {
-    console.error("❌ Error inserting KOT:", error.message);
-    throw new Error("Failed to create KOT. Please try again.");
+    console.error("Error inserting KOT:", error.message);
+    throw error;
   }
 }
 export async function getKotOrdersByBranch() {
@@ -142,7 +141,6 @@ export async function getKotOrdersByBranch() {
 }
 export async function updateKOTStatusService(kotId, status) {
   try {
-    console.log(kotId, status);
     const stmt = db.prepare(`
       UPDATE kot_orders
       SET status = ?, updatedAt = CURRENT_TIMESTAMP
@@ -287,7 +285,7 @@ export function insertKotConfig(data) {
     const existing = db.prepare(selectQuery).get();
 
     if (existing) {
-      console.log("⚙️ KOT config already exists, skipping insert.");
+      console.log("KOT config already exists, skipping insert.");
       return {
         success: true,
         id: existing.id,

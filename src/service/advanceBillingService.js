@@ -1,5 +1,4 @@
 export const saveAdvanceBillingInfo = async (billData) => {
-  console.log(billData);
   try {
     const result = await window.api.addAdvanceBilling(billData);
     if (result.success) {
@@ -40,5 +39,14 @@ export const saveAdvanceToBilling = async (billInfo) => {
   } catch (error) {
     console.error("Advance billing save error:", error);
     return { success: false, message: "Something went wrong while saving." };
+  }
+};
+export const updateAdvanceBillType = async (id, billType = "cleared") => {
+  try {
+    const result = await window.api.updateAdvanceBillType(id, billType);
+    return result;
+  } catch (error) {
+    console.error("Failed to update advance bill type:", error);
+    return { success: false, message: "Failed to update advance bill type" };
   }
 };

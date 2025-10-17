@@ -1,6 +1,5 @@
 import * as XLSX from "xlsx";
-export function mapBillForPrint(billData, branchInfo) {
-  console.log(billData);
+export function mapBillForPrint(billData, branchInfo, splitData = {}) {
   return {
     shopName: branchInfo.branch_name || "Shop",
     address: branchInfo.branchaddress || "",
@@ -32,16 +31,20 @@ export function mapBillForPrint(billData, branchInfo) {
       taxableValue: billData.items.reduce((sum, i) => sum + i.taxableValue, 0),
       totalCGST: billData.items.reduce((sum, i) => sum + i.cgstAmount, 0),
       totalSGST: billData.items.reduce((sum, i) => sum + i.cgstAmount, 0),
-      grandTotal: billData.amount,
+      grandTotal: Number(billData.grandTotal).toFixed(2),
       discountPercent: billData.discount || 0,
-      netTotal:
-        (billData.amount || 0) -
-        (billData.amount * (billData.discount || 0)) / 100,
+      netTotal: Number(billData.amount).toFixed(2),
     },
     paymentType: billData.paymentType,
     advanceAmount: billData.advanceAmount,
     balanceToCustomer: billData.balanceToCustomer,
     balanceAmount: billData.balanceAmount,
+    ...(splitData.cashAmount || splitData.onlineAmount
+      ? {
+          cashAmount: Number(splitData.cashAmount || 0).toFixed(2),
+          onlineAmount: Number(splitData.onlineAmount || 0).toFixed(2),
+        }
+      : {}),
   };
 }
 
@@ -125,4 +128,8 @@ export function formatDateTimeTo12Hour(datetime) {
   hour = hour % 12 || 12;
 
   return `${datePart} ${hour}:${minute.toString().padStart(2, "0")} ${ampm}`;
+}
+
+export function round2(value) {
+  return Number(parseFloat(value || 0).toFixed(2));
 }

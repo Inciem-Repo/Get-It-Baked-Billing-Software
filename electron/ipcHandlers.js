@@ -11,6 +11,7 @@ import {
 import { getProductsDetails } from "./service/produtsService.js";
 import {
   addBilling,
+  addSplitBillController,
   generateInvoiceNo,
   getAllBillHistory,
   getBillingById,
@@ -49,6 +50,7 @@ import {
   convertAdvanceToBilling,
   getAdvanceBillingById,
   getAdvanceBillingDetails,
+  updateAdvanceBillTypeController,
 } from "./service/advanceBillingService.js";
 
 const settings = new store();
@@ -320,15 +322,41 @@ ipcMain.handle("expense-getSummary", async () => {
 });
 
 //KOT
+// ipcMain.handle("kot-add", async (event, kotData) => {
+//   try {
+//     const result = addKot(kotData);
+//     return { success: true, data: result };
+//   } catch (err) {
+//     console.error("Failed to add KOT:", err);
+//     return { success: false, err };
+//   }
+// });
 ipcMain.handle("kot-add", async (event, kotData) => {
   try {
     const result = addKot(kotData);
     return { success: true, data: result };
   } catch (err) {
-    console.error("Failed to add KOT:", err);
-    return { success: false, message: err.message };
+    // 1️⃣ Log to console (shows in main process logs)
+    console.error("❌ Failed to add KOT:", err);
+    // 3️⃣ Return serializable info to renderer
+    return {
+      success: false,
+      message: err.message,
+      stack: err.stack,
+      name: err.name,
+    };
   }
 });
+ipcMain.handle("billing-addSplitBill", async (event, billData) => {
+  try {
+    const result = await addSplitBillController(billData);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("IPC Error - addSplitBill:", error);
+    return { success: false, message: error.message };
+  }
+});
+
 ipcMain.handle("kot-generate-token", async (event) => {
   try {
     const token = generateKotToken();
@@ -443,6 +471,15 @@ ipcMain.handle("billing-convertAdvance", async (event, args) => {
     return result;
   } catch (err) {
     console.error("IPC Error - convertAdvanceToBilling:", err);
+    return { success: false, message: err.message };
+  }
+});
+ipcMain.handle("update-advance-bill-type", async (event, id, billType) => {
+  try {
+    const result = await updateAdvanceBillTypeController(id, billType);
+    return result;
+  } catch (err) {
+    console.error("Error updating advance bill type:", err);
     return { success: false, message: err.message };
   }
 });

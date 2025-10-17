@@ -68,7 +68,9 @@ export function searchCustomers(searchTerm = "") {
   }
 }
 
-function generateCustomerId(branchId) {
+function generateCustomerId() {
+  const branch = getUser();
+  const branchId = branch.id;
   const RANGE = 10000000;
   const base = branchId * RANGE;
   const row = db

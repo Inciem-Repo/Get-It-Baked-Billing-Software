@@ -94,7 +94,7 @@ const Expense = () => {
         remarks: expenseData.remarks,
         date: new Date().toISOString().split("T")[0],
       };
-     
+
       const result = await window.api.addExpense(payload);
       if (result.success) {
         toast.success("Expense added successfully");
@@ -157,9 +157,9 @@ const Expense = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-gray-50">
-      <div className="bg-white">
-        <Header title={"Expense Management"} />
+    <div className="flex flex-col w-full bg-gray-50">
+      <Header title={"Expense Management"} />
+      <div className="overflow-auto">
         <div className="px-6 py-3">
           <div className="flex items-end justify-between">
             <div className="flex items-end space-x-6">
@@ -263,181 +263,181 @@ const Expense = () => {
             </div>
           </div>
         </div>
-      </div>
-      <div className="bg-white mx-6 my-4 rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-r w-16">
-                  No
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-r min-w-48">
-                  Expense Category
-                </th>
-                <th className="px-4 py-3  text-sm font-medium text-gray-600 border-r w-32 text-right">
-                  Amount
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-r w-32">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-r w-32">
-                  Payment Type
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                  Remarks
-                </th>
-              </tr>
-            </thead>
+        <div className="bg-white mx-6 my-4 rounded-lg shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-r w-16">
+                    No
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-r min-w-48">
+                    Expense Category
+                  </th>
+                  <th className="px-4 py-3  text-sm font-medium text-gray-600 border-r w-32 text-right">
+                    Amount
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-r w-32">
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 border-r w-32">
+                    Payment Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    Remarks
+                  </th>
+                </tr>
+              </thead>
 
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-8">
-                    Loading...
-                  </td>
-                </tr>
-              ) : expenses.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">
-                    No expense records found.
-                  </td>
-                </tr>
-              ) : (
-                expenses.map((expense, index) => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 text-sm text-gray-900 border-r text-center">
-                      {startIndex + index + 1}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 border-r font-medium">
-                      {expense.category_name}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 border-r font-medium text-right">
-                      ₹{Number(expense.amount || 0).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 border-r">
-                      {expense.date
-                        ? new Date(expense.date).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-4 text-sm border-r capitalize">
-                      {expense.expense_payment}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900">
-                      {expense.remarks}
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8">
+                      Loading...
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="bg-gray-100 border-t-2 border-gray-300">
-          <div className="px-4 py-4 flex justify-end items-center">
-            <div className="">
-              <span className="ml-6 text-sm font-medium text-gray-700 mr-2">
-                Today Expense Total:
-              </span>
-              <span className="text-lg font-bold text-green-700">
-                ₹{Number(totalToday || 0).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-gray-100 border-t-2 border-gray-300">
-          <div className="px-4 py-4 flex justify-end items-center">
-            <div className="">
-              <span className="ml-6 text-sm font-medium text-gray-700 mr-2">
-                Grand Total:
-              </span>
-              <span className="text-lg font-bold text-green-700">
-                ₹{Number(grandTotal || 0).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {totalRecords > 0 && (
-          <div className="bg-gray-50 px-6 py-4 border-t flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing {totalRecords === 0 ? 0 : startIndex + 1} to {endIndex} of{" "}
-              {totalRecords} results
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Previous
-              </button>
-
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (page) => {
-                    const showPage =
-                      page === 1 ||
-                      page === totalPages ||
-                      Math.abs(page - currentPage) <= 1;
-
-                    if (!showPage && page === 2 && currentPage > 4) {
-                      return (
-                        <span
-                          key={`dots1-${page}`}
-                          className="px-2 text-gray-400"
-                        >
-                          ...
-                        </span>
-                      );
-                    }
-
-                    if (
-                      !showPage &&
-                      page === totalPages - 1 &&
-                      currentPage < totalPages - 3
-                    ) {
-                      return (
-                        <span
-                          key={`dots2-${page}`}
-                          className="px-2 text-gray-400"
-                        >
-                          ...
-                        </span>
-                      );
-                    }
-
-                    if (!showPage) return null;
-
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 text-sm border rounded-lg transition-colors ${
-                          currentPage === page
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "border-gray-300 hover:bg-gray-100"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  }
+                ) : expenses.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 text-gray-500">
+                      No expense records found.
+                    </td>
+                  </tr>
+                ) : (
+                  expenses.map((expense, index) => (
+                    <tr key={expense.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 text-sm text-gray-900 border-r text-center">
+                        {startIndex + index + 1}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 border-r font-medium">
+                        {expense.category_name}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 border-r font-medium text-right">
+                        ₹{Number(expense.amount || 0).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 border-r">
+                        {expense.date
+                          ? new Date(expense.date).toLocaleDateString()
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-4 text-sm border-r capitalize">
+                        {expense.expense_payment}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900">
+                        {expense.remarks}
+                      </td>
+                    </tr>
+                  ))
                 )}
+              </tbody>
+            </table>
+          </div>
+          <div className="bg-gray-100 border-t-2 border-gray-300">
+            <div className="px-4 py-4 flex justify-end items-center">
+              <div className="">
+                <span className="ml-6 text-sm font-medium text-gray-700 mr-2">
+                  Today Expense Total:
+                </span>
+                <span className="text-lg font-bold text-green-700">
+                  ₹{Number(totalToday || 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-100 border-t-2 border-gray-300">
+            <div className="px-4 py-4 flex justify-end items-center">
+              <div className="">
+                <span className="ml-6 text-sm font-medium text-gray-700 mr-2">
+                  Grand Total:
+                </span>
+                <span className="text-lg font-bold text-green-700">
+                  ₹{Number(grandTotal || 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {totalRecords > 0 && (
+            <div className="bg-gray-50 px-6 py-4 border-t flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Showing {totalRecords === 0 ? 0 : startIndex + 1} to {endIndex}{" "}
+                of {totalRecords} results
               </div>
 
-              <button
-                onClick={() =>
-                  setCurrentPage(Math.min(totalPages, currentPage + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => {
+                      const showPage =
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - currentPage) <= 1;
+
+                      if (!showPage && page === 2 && currentPage > 4) {
+                        return (
+                          <span
+                            key={`dots1-${page}`}
+                            className="px-2 text-gray-400"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      if (
+                        !showPage &&
+                        page === totalPages - 1 &&
+                        currentPage < totalPages - 3
+                      ) {
+                        return (
+                          <span
+                            key={`dots2-${page}`}
+                            className="px-2 text-gray-400"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      if (!showPage) return null;
+
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 text-sm border rounded-lg transition-colors ${
+                            currentPage === page
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "border-gray-300 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+
+                <button
+                  onClick={() =>
+                    setCurrentPage(Math.min(totalPages, currentPage + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <AddExpenseModal

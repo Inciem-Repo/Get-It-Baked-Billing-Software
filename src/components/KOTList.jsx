@@ -25,7 +25,6 @@ export function KOTList() {
   const fetchLastKot = async () => {
     try {
       const lastKot = await getNewKOTS();
-      console.log(lastKot);
       setKOTDetails(lastKot);
       return lastKot;
     } catch (error) {

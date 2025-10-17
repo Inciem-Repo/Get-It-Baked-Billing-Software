@@ -89,9 +89,9 @@ export function startServer() {
 
     try {
       await insertKotConfig(defaultData);
-      console.log("✅ KOT configuration setup completed.");
+      console.log("KOT configuration setup completed.");
     } catch (err) {
-      console.error("❌ Error setting up default KOT config:", err);
+      console.error("Error setting up default KOT config:", err);
     }
   }
 
@@ -101,8 +101,7 @@ export function startServer() {
 
   app.listen(PORT, HOST, async () => {
     await setupDefaultKotConfig(localIp, PORT);
-    console.log(publicPath);
-    console.log(`🚀 KOT View: http://localhost:${PORT}/kot`);
-    console.log(`🌐 Network: http://${localIp}:${PORT}/kot`);
+    console.log(`KOT View: http://localhost:${PORT}/kot`);
+    console.log(`Network: http://${localIp}:${PORT}/kot`);
   });
 }
