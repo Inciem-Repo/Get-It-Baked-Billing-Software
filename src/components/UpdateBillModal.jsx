@@ -79,6 +79,8 @@ const UpdateBillModal = ({ isOpen, onClose, invoiceData, onSave }) => {
   };
 
   if (!isOpen) return null;
+  const isPaymentChanged =
+    invoiceData && invoiceData.paymentMethod !== formData.paymentMethod;
 
   return (
     <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
@@ -238,7 +240,12 @@ const UpdateBillModal = ({ isOpen, onClose, invoiceData, onSave }) => {
 
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            disabled={!isPaymentChanged}
+            className={`px-4 py-2 rounded-md transition-colors ${
+              isPaymentChanged
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+            }`}
           >
             Update Payment
           </button>

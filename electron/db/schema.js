@@ -1,6 +1,5 @@
 export const createTables = [
-  `
-  CREATE TABLE IF NOT EXISTS billing (
+  `CREATE TABLE IF NOT EXISTS billing (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     invid TEXT NOT NULL,
     totalTaxableValuef REAL DEFAULT 0.00,
@@ -37,7 +36,7 @@ export const createTables = [
   real_password TEXT NOT NULL
 );
 `,
-  ` CREATE TABLE IF NOT EXISTS products (
+  `CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     category_id TEXT NOT NULL,
@@ -103,8 +102,7 @@ export const createTables = [
   date DATE NOT NULL,
   synced INTEGER DEFAULT 1 
 );`,
-  `
-CREATE TABLE IF NOT EXISTS expensecategory (
+  `CREATE TABLE IF NOT EXISTS expensecategory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL,
     status INTEGER NOT NULL,
@@ -116,6 +114,118 @@ SELECT * FROM billing WHERE 0;
   `CREATE TABLE IF NOT EXISTS billing_items_archive AS
 SELECT * FROM billing_items WHERE 0;
 `,
+  `CREATE TABLE IF NOT EXISTS kot_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kotToken TEXT NOT NULL UNIQUE,
+    invoiceId TEXT,                
+    branchId INTEGER NOT NULL,     
+    customerId INTEGER,           
+    priority TEXT CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+    deliveryDate TEXT,  
+    createdBy INTEGER,          
+    deliveryTime TEXT,             
+    status TEXT CHECK(status IN ('baking','ready','pending','cancelled')) DEFAULT 'baking',
+    totalAmount REAL DEFAULT 0,
+    synced INTEGER DEFAULT 1,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    isDeleted INTEGER DEFAULT 0,
+    FOREIGN KEY(customerId) REFERENCES customers(id)
+);`,
+  `CREATE TABLE IF NOT EXISTS kot_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kotOrderId TEXT NOT NULL,
+    productId INTEGER NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    unitPrice INTEGER NOT NULL,
+    total REAL NOT NULL,
+    notes TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    isDeleted INTEGER DEFAULT 0,
+    FOREIGN KEY(kotOrderId) REFERENCES kot_orders(kotToken)
+);`,
+  `CREATE TABLE IF NOT EXISTS kot_status_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kotOrderId INTEGER NOT NULL,
+    oldStatus TEXT,
+    newStatus TEXT NOT NULL,
+    changedBy INTEGER,                         
+    changedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(kotOrderId) REFERENCES kot_orders(id),
+    FOREIGN KEY(changedBy) REFERENCES users(id)
+);`,
+  `CREATE TABLE IF NOT EXISTS kot_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    branch_id INTEGER,
+    kot_monitor_url TEXT,
+    reminder_time_minutes INTEGER DEFAULT 10,   
+    sound_file TEXT DEFAULT 'default.mp3',      
+    enable_sound INTEGER DEFAULT 1,                     
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);`,
+  `CREATE TABLE IF NOT EXISTS advance_billing (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    totalTaxableValuef REAL DEFAULT 0.00,
+    totalCgstf REAL DEFAULT 0.00,
+    totalIgstf REAL DEFAULT 0.00,
+    discountPercentf INTEGER DEFAULT 0,
+    grandTotalf REAL DEFAULT 0.00,
+    customer_id TEXT NOT NULL,
+    bill_type TEXT NOT NULL,
+    paymenttype TEXT NOT NULL,
+    billdate TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    customernote TEXT,
+    advanceamount TEXT,
+    balanceAmount TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    synced INTEGER DEFAULT 1
+)`,
+  `CREATE TABLE IF NOT EXISTS advance_billing_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    advance_billing_id INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    qty INTEGER NOT NULL,
+    unit_price REAL NOT NULL,
+    taxable_value REAL,
+    cgst_value REAL,
+    igst_value REAL,
+    total_price REAL NOT NULL,
+    FOREIGN KEY (advance_billing_id) REFERENCES advance_billing(id) ON DELETE CASCADE
+);`,
+  `CREATE TABLE IF NOT EXISTS backup_billing (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    invid TEXT NOT NULL,
+    totalTaxableValuef REAL DEFAULT 0.00,
+    totalCgstf REAL DEFAULT 0.00,
+    totalIgstf REAL DEFAULT 0.00,
+    discountPercentf INTEGER DEFAULT 0,
+    grandTotalf REAL DEFAULT 0.00,
+    customer_id TEXT NOT NULL,
+    bill_type TEXT NOT NULL,
+    paymenttype TEXT NOT NULL,
+    billdate TEXT NOT NULL,
+    branch_id TEXT NOT NULL,
+    pdflink TEXT,
+    customernote TEXT,
+    advanceamount TEXT,
+    balanceAmount TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    synced INTEGER DEFAULT 1 
+);`,
+  `CREATE TABLE IF NOT EXISTS backup_billing_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bill_id INTEGER ,
+    item_id INTEGER NOT NULL,
+    qty INTEGER NOT NULL,
+    unit_price REAL NOT NULL,
+    taxable_value REAL,
+    cgst_value REAL,
+    igst_value REAL,
+    total_price REAL NOT NULL
+)`,
 ];
 
 //   `CREATE TABLE IF NOT EXISTS advance_billing (

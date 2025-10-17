@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Menu, ChevronDown, ChevronRight } from "lucide-react";
 import bakedLogo from "../../assets/images/baked-logo.png";
 import { menuItems } from "../../constance/menu.js";
-import PrinterSelector from "../PrinterSelector.jsx";
 
 const Sidebar = ({ activeView, isCollapsed, onToggleCollapse }) => {
   const navigate = useNavigate();
@@ -144,11 +143,6 @@ const Sidebar = ({ activeView, isCollapsed, onToggleCollapse }) => {
           })}
         </div>
       </nav>
-
-      <PrinterSelector
-        open={printerDialogOpen}
-        onClose={() => setPrinterDialogOpen(false)}
-      />
       <div className="p-4 border-t border-slate-700 text-xs text-slate-400">
         {!isCollapsed && (
           <div className="space-y-2">

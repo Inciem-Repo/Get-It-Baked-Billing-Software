@@ -184,8 +184,6 @@ async function pushLocalToLive(
 
   for (const row of localRows) {
     const { synced, ...liveRow } = row;
-
-    // 🔥 Normalize fields
     if (liveRow.branch_id !== undefined) {
       liveRow.branch_id = String(parseInt(liveRow.branch_id, 10));
     }

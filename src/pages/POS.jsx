@@ -1,24 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
-import Header from "../components/layout/header";
-import { getUserInfo } from "../service/authService";
+import Header from "../components/layout/Header";
 import { getProductsInfo } from "../service/productsService";
 import SearchableDropdown from "../components/common/SearchableDropdown";
-import { useReactToPrint } from "react-to-print";
-import BillPrint from "./BillPrint";
 import { getCustomersInfo } from "../service/userService";
 import {
   handleGenerateInvoice,
   saveBillingInfo,
+  saveSplitBillingInfo,
 } from "../service/billingService";
 import NumberInput from "../components/common/NumberInput";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { mapBillForPrint } from "../lib/helper";
-import { useNavigate } from "react-router-dom";
+import { mapBillForPrint, round2 } from "../lib/helper";
+import { useLocation, useNavigate } from "react-router-dom";
 import AddCustomerModal from "../components/AddCustomerModal";
+import { getKOTDetails, updateKOTInvoiceID } from "../service/KOTService";
+import {
+  getAdvanceBillingInfoById,
+  saveAdvanceBillingInfo,
+  updateAdvanceBillType,
+} from "../service/advanceBillingService";
 
 const POS = () => {
   const { branchInfo } = useAuth();
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const token = params.get("token");
+  const type = params.get("type");
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [items, setItems] = useState([
@@ -104,6 +112,67 @@ const POS = () => {
       noteRef.current.style.height = "auto";
     }
   };
+  const addNewRow = () => {
+    const newItem = {
+      id: Date.now(),
+      item: "",
+      unitPrice: 0,
+      quantity: 1,
+      unit: "",
+      taxableValue: 0,
+      cgstRate: 0,
+      cgstAmount: 0,
+      igstRate: 0,
+      igstAmount: 0,
+      total: 0,
+    };
+    setItems([...items, newItem]);
+  };
+  const removeRow = (id) => {
+    if (items.length > 1) {
+      setItems(items.filter((item) => item.id !== id));
+    }
+  };
+  const calculateTotals = () => {
+    const totalTaxableValue = items.reduce(
+      (sum, item) => sum + item.taxableValue,
+      0
+    );
+    const totalCGST = items.reduce((sum, item) => sum + item.cgstAmount, 0);
+    const totalIGST = items.reduce((sum, item) => sum + item.igstAmount, 0);
+
+    const grossTotal = totalTaxableValue + totalCGST + totalIGST;
+
+    const discountPercent = formData.discount || 0;
+    const discountAmount = (grossTotal * discountPercent) / 100;
+
+    const grandTotal = grossTotal;
+    const netTotal = grossTotal - discountAmount;
+
+    const advance = formData.advanceAmount || 0;
+
+    let balanceAmount = 0;
+    let balanceToCustomer = 0;
+
+    if (advance < grandTotal) {
+      balanceAmount = Number((netTotal - advance).toFixed(2));
+    } else if (advance > grandTotal) {
+      balanceToCustomer = Number((advance - grandTotal).toFixed(2));
+    }
+
+    return {
+      totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
+      totalCGST: Number(totalCGST.toFixed(2)),
+      totalIGST: Number(totalIGST.toFixed(2)),
+      grossTotal: Number(grossTotal.toFixed(2)),
+      netTotal: Number(netTotal.toFixed(2)),
+      discountAmount: Number(discountAmount.toFixed(2)),
+      grandTotal: Number(grandTotal.toFixed(2)),
+      balanceAmount,
+      balanceToCustomer,
+    };
+  };
+  const totals = calculateTotals();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -115,8 +184,6 @@ const POS = () => {
         e.preventDefault();
         handleF3Click();
       }
-
-      // Step 1: F4 focuses the select
       if (e.key === "F4") {
         e.preventDefault();
         if (paymentSelectRef.current) {
@@ -137,6 +204,83 @@ const POS = () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [items]);
+
+  useEffect(() => {
+    if (!token || !products.length) return;
+
+    const fetchBillingDetails = async () => {
+      if (!token) return;
+
+      let response;
+      if (type === "kot") {
+        response = await getKOTDetails(token);
+      } else if (type === "advanceOrder") {
+        response = await getAdvanceBillingInfoById(token);
+      }
+
+      if (!response?.success) {
+        toast.error("Invalid token or data not found");
+        return;
+      }
+      let data = {};
+      let customer = { id: 0, name: "Walking Customer" };
+      if (type == "advanceOrder") {
+        data = response.bill;
+        setFormData((prev) => ({
+          ...prev,
+          advanceAmount: Number(data?.advanceamount) || 0,
+          balanceAmount: Number(data?.balanceAmount) || 0,
+          paymentType: data.paymenttype || "",
+          amount: formData.amount,
+          amountReceived: Number(data?.advanceamount) || 0,
+        }));
+        setSelectedCustomer({ id: data.customer_id, name: data.customer_name });
+      } else {
+        data = response.data;
+        setSelectedCustomer({ id: data.customerId, name: data.customerName });
+      }
+      const { customerId, items = [] } = data;
+      if (customerId && customerId !== 0) {
+        const res = await window.api.getCustomerById(customerId);
+        if (res.success && res.customer) customer = res.customer;
+      }
+      const initialItems = items.map((i) => ({
+        id: Date.now() + Math.random(),
+        productId: i.productId || i.item_id,
+        productName: i.productName || i.product_name,
+        quantity: i.quantity || i.qty || 1,
+        unitPrice: i.unitPrice || i.unit_price || i.product_price || 0,
+        cgstRate: i.cgst || i.tax / 2 || 0,
+        igstRate: i.igst || i.tax / 2 || 0,
+      }));
+
+      setFormData((prev) => ({
+        ...prev,
+        customer: customer.name,
+        customerId: customer.id,
+        customerNote: data.notes || data.customernote || "",
+      }));
+      const resolvedItems = initialItems.map((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        return product ? { ...product, ...item } : item;
+      });
+      setItems(resolvedItems);
+      setTimeout(() => {
+        resolvedItems.forEach((it) => {
+          updateItem(it.id, "quantity", it.quantity);
+        });
+      }, 100);
+
+      toast.success(
+        type === "kot"
+          ? `Loaded KOT ${data.kotToken}`
+          : `Loaded Advance Order ${data.invoiceId}`
+      );
+    };
+
+    fetchBillingDetails();
+  }, [token, products]);
+
   useEffect(() => {
     const fetchInvoice = async () => {
       const invoice = await handleGenerateInvoice(
@@ -149,58 +293,31 @@ const POS = () => {
   }, [branchInfo.id, formData.paymentType]);
 
   useEffect(() => {
+    const getProducts = async () => {
+      const result = await getProductsInfo();
+      setProducts(result);
+    };
+    getProducts();
+  }, []);
+  useEffect(() => {
+    if (type === "advanceOrder") return;
+    setFormData((prev) => ({
+      ...prev,
+      advanceAmount: totals.netTotal,
+      amountReceived: totals.netTotal,
+    }));
+  }, [totals.netTotal]);
+
+  useEffect(() => {
     const initTotals = calculateTotals();
     setFormData((prev) => ({
       ...prev,
       amount: initTotals.grandTotal,
-      advanceAmount: initTotals.grandTotal,
-      amountReceived: initTotals.grandTotal,
       balanceToCustomer: 0,
+      ...(type !== "advanceOrder" && { advanceAmount: initTotals.grandTotal }),
     }));
-  }, [items]);
+  }, [items, type]);
 
-  const addNewRow = () => {
-    const newItem = {
-      id: Date.now(),
-      item: "",
-      unitPrice: 0,
-      quantity: 1,
-      unit: "",
-      taxableValue: 0,
-      cgstRate: 0,
-      cgstAmount: 0,
-      igstRate: 0,
-      igstAmount: 0,
-      total: 0,
-    };
-    setItems([...items, newItem]);
-  };
-
-  const removeRow = (id) => {
-    if (items.length > 1) {
-      setItems(items.filter((item) => item.id !== id));
-    }
-  };
-
-  const updateItem = (id, field, value) => {
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-
-        const updatedItem = { ...item, [field]: value };
-
-        // Recalculate totals based on quantity change
-        const totalTax = updatedItem.cgstRate + updatedItem.igstRate;
-        const taxableValue =
-          (updatedItem.unitPrice / (1 + totalTax / 100)) * updatedItem.quantity;
-        const cgstAmount = (taxableValue * updatedItem.cgstRate) / 100;
-        const igstAmount = (taxableValue * updatedItem.igstRate) / 100;
-        const total = taxableValue + cgstAmount + igstAmount;
-
-        return { ...updatedItem, taxableValue, cgstAmount, igstAmount, total };
-      })
-    );
-  };
   const handleF3Click = () => {
     setShowAddCustomerModal(true);
   };
@@ -222,69 +339,16 @@ const POS = () => {
       toast.error("Failed to add:");
     }
   };
-
-  const calculateTotals = () => {
-    const totalTaxableValue = items.reduce(
-      (sum, item) => sum + item.taxableValue,
-      0
-    );
-    const totalCGST = items.reduce((sum, item) => sum + item.cgstAmount, 0);
-    const totalIGST = items.reduce((sum, item) => sum + item.igstAmount, 0);
-
-    const grossTotal = totalTaxableValue + totalCGST + totalIGST;
-
-    // --- percentage discount ---
-    const discountPercent = formData.discount || 0;
-    const discountAmount = (grossTotal * discountPercent) / 100;
-
-    const grandTotal = grossTotal;
-    const netTotal = grossTotal - discountAmount;
-
-    const advance = formData.advanceAmount || 0;
-
-    let balanceAmount = 0;
-    let balanceToCustomer = 0;
-
-    if (advance < grandTotal) {
-      balanceAmount = Number((grandTotal - advance).toFixed(2));
-    } else if (advance > grandTotal) {
-      balanceToCustomer = Number((advance - grandTotal).toFixed(2));
-    }
-
-    return {
-      totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
-      totalCGST: Number(totalCGST.toFixed(2)),
-      totalIGST: Number(totalIGST.toFixed(2)),
-      grossTotal: Number(grossTotal.toFixed(2)),
-      netTotal: Number(netTotal.toFixed(2)),
-      discountAmount: Number(discountAmount.toFixed(2)),
-      grandTotal: Number(grandTotal.toFixed(2)),
-      balanceAmount,
-      balanceToCustomer,
-    };
-  };
-
-  const totals = calculateTotals();
-
-  useEffect(() => {
-    const getProducts = async () => {
-      const result = await getProductsInfo();
-      setProducts(result);
-    };
-    getProducts();
-  }, []);
-
   const handleCustomerSelect = (customer) => {
     setSelectedCustomer(customer);
   };
-
   const handleProductSelect = (id, product) => {
     const totalTax = parseFloat(product.tax) || 0;
     const cgstRate = totalTax / 2;
     const igstRate = totalTax / 2;
 
     const unitPrice = product.price || 0;
-    const taxableValue = unitPrice / (1 + totalTax / 100);
+    const taxableValue = unitPrice * (100 / (100 + totalTax));
 
     const cgstAmount = (taxableValue * cgstRate) / 100;
     const igstAmount = (taxableValue * igstRate) / 100;
@@ -298,13 +362,13 @@ const POS = () => {
               ...row,
               productId: product.id,
               productName: product.title,
-              unitPrice,
+              unitPrice: unitPrice,
               quantity: row.quantity || 1,
               cgstRate,
-              cgstAmount,
+              cgstAmount: cgstAmount,
               igstRate,
-              igstAmount,
-              taxableValue,
+              igstAmount: igstAmount,
+              taxableValue: taxableValue,
               total,
               unit: product.unit || "",
             }
@@ -312,8 +376,24 @@ const POS = () => {
       )
     );
   };
+  const updateItem = (id, field, value) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
 
-  const handleSave = async (type) => {
+        const updatedItem = { ...item, [field]: value };
+        const totalTax = updatedItem.cgstRate + updatedItem.igstRate;
+        const taxableValue =
+          (updatedItem.unitPrice / (1 + totalTax / 100)) * updatedItem.quantity;
+        const cgstAmount = (taxableValue * updatedItem.cgstRate) / 100;
+        const igstAmount = (taxableValue * updatedItem.igstRate) / 100;
+        const total = taxableValue + cgstAmount + igstAmount;
+        return { ...updatedItem, taxableValue, cgstAmount, igstAmount, total };
+      })
+    );
+  };
+
+  const handleSave = async (btnType) => {
     if (!items || items.length === 0 || !items.some((i) => i.productId)) {
       toast.error("⚠️ Please add at least one item before saving.");
       return;
@@ -327,49 +407,91 @@ const POS = () => {
       ...formData,
       customer: selectedCustomer?.name || formData.customer,
       customerId: selectedCustomer?.id,
-      amount: Number(totals.grandTotal.toFixed(2)),
-      advanceAmount: Number(formData.advanceAmount.toFixed(2)),
-      amountReceived: Number(formData.amountReceived.toFixed(2)),
-      balanceToCustomer: Number(totals.balanceToCustomer.toFixed(2)),
-      balanceAmount: Number(totals.balanceAmount.toFixed(2)),
-      totalIGST: Number(totals.totalIGST.toFixed(2)),
-      totalCGST: Number(totals.totalCGST.toFixed(2)),
-      totalTaxableValue: Number(totals.totalTaxableValue.toFixed(2)),
+      amount: round2(totals.netTotal),
+      advanceAmount: round2(formData.advanceAmount),
+      amountReceived: round2(formData.amountReceived),
+      balanceToCustomer: round2(totals.balanceToCustomer),
+      balanceAmount: round2(totals.balanceAmount),
+      totalIGST: round2(totals.totalIGST),
+      totalCGST: round2(totals.totalCGST),
+      grandTotal: round2(totals.grandTotal),
+      totalTaxableValue: round2(totals.totalTaxableValue),
     };
+    const roundedItems = items.map((item) => ({
+      ...item,
+      unitPrice: round2(item.unitPrice),
+      quantity: round2(item.quantity),
+      taxableValue: round2(item.taxableValue),
+      cgstRate: item.cgstRate,
+      cgstAmount: round2(item.cgstAmount),
+      igstRate: item.igstRate,
+      igstAmount: round2(item.igstAmount),
+      total: round2(item.total),
+    }));
 
-    const newBill = { ...updatedFormData, items };
+    const newBill = { ...updatedFormData, items: roundedItems };
     setFormData(updatedFormData);
-    setBill(newBill);
     try {
-      const result = await saveBillingInfo(newBill);
-      if (!result.success) {
-        toast.error("Error: " + result.error);
+      let result = null;
+      //  Only one function executes based on btnType
+      if (btnType === "advanceOrder") {
+        result = await saveAdvanceBillingInfo(newBill);
+      } else if (formData.paymentType === "Split") {
+        result = await saveSplitBillingInfo(newBill);
+      } else {
+        result = await saveBillingInfo(newBill);
+      }
+
+      if (!result?.success) {
+        toast.error(result.error ? result.error : result.message);
         return;
       }
 
       const savedBill = result.bill;
 
-      switch (type) {
+      // KOT link update
+      if (token && type === "kot") {
+        await updateKOTInvoiceID(token, newBill.invoiceNo);
+      }
+
+      // Advance bill type update
+      if (token && type === "advanceOrder") {
+        const res = await updateAdvanceBillType(token);
+        if (res.success) navigate("/", { replace: true });
+      }
+
+      switch (btnType) {
         case "save":
           toast.success("Bill saved successfully");
           resetBillingForm();
           break;
 
         case "saveAndPrint": {
-          const printableBill = mapBillForPrint(savedBill, branchInfo);
+          console.log(savedBill);
+          const printableBill = mapBillForPrint(
+            newBill,
+            branchInfo,
+            formData.paymentType === "Split"
+              ? {
+                  cashAmount: formData.cashAmount || 0,
+                  onlineAmount: formData.onlineAmount || 0,
+                }
+              : {}
+          );
           await window.api.openPrintPreview(printableBill);
           resetBillingForm();
           break;
         }
-
         case "saveAndList":
           toast.success("Bill saved successfully");
           resetBillingForm();
           navigate("/billing-history");
           break;
-
+        case "advanceOrder":
+          toast.success("Bill saved successfully");
+          resetBillingForm();
         default:
-          console.warn("Unknown save type:", type);
+          console.warn("Unknown save type:", btnType);
       }
     } catch (error) {
       console.error("Save error:", error);
@@ -552,7 +674,7 @@ const POS = () => {
                           }}
                         />
                       ) : (
-                        item.unitPrice.toFixed(2)
+                        item?.unitPrice?.toFixed(2)
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -573,22 +695,22 @@ const POS = () => {
                     </td>
                     <td className="px-4 py-3 text-center">{item?.unit}</td>
                     <td className="px-4 py-3 text-sm text-center">
-                      {item.taxableValue.toFixed(2)}
+                      {item.taxableValue?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {item.cgstRate.toFixed(2)}
+                      {item.cgstRate?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-sm text-center">
-                      {item.cgstAmount.toFixed(2)}
+                      {item.cgstAmount?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {item.igstRate.toFixed(2)}
+                      {item.igstRate?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-sm text-center">
-                      {item.igstAmount.toFixed(2)}
+                      {item.igstAmount?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-sm text-center font-medium">
-                      {item.total.toFixed(2)}
+                      {item.total?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex space-x-1">
@@ -621,6 +743,7 @@ const POS = () => {
                     Amount
                   </label>
                   <NumberInput
+                    readOnly={true}
                     value={formData.amount}
                     onChange={(val) =>
                       setFormData({ ...formData, amount: val })
@@ -678,6 +801,7 @@ const POS = () => {
                   </label>
                   <NumberInput
                     value={formData.amountReceived}
+                    readOnly={true}
                     onChange={(val) =>
                       setFormData({ ...formData, amountReceived: val })
                     }
@@ -690,6 +814,7 @@ const POS = () => {
                   </label>
                   <NumberInput
                     value={totals.balanceToCustomer}
+                    readOnly={true}
                     onChange={(val) =>
                       setFormData({ ...formData, balanceToCustomer: val })
                     }
@@ -735,7 +860,7 @@ const POS = () => {
                 </div>
                 <div className="flex justify-between  border-t font-bold text-lg pt-3">
                   <span>Net Total</span>
-                  <span>{totals.netTotal.toFixed(2)}</span>
+                  <span>{totals.netTotal?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Advance Amount</span>
@@ -777,26 +902,43 @@ const POS = () => {
               <option>— Select payment Type —</option>
               <option>Cash</option>
               <option>Online</option>
-              {/* <option>Split</option> */}
+              <option>Split</option>
             </select>
           </div>
 
           <div className="flex space-x-2">
             {[
-              // { label: "Advance Order", action: "save" },
+              { label: "Advance Order", action: "advanceOrder" },
               { label: "Save Details", action: "save" },
               { label: "Save & Print", action: "saveAndPrint" },
               { label: "Save & List", action: "saveAndList" },
-            ].map((btn, i) => (
-              <button
-                key={i}
-                className="bg-blue-600 text-white px-4 py-4 rounded-lg hover:bg-blue-700 text-sm fl"
-                onClick={() => handleSave(btn.action)}
-                disabled={saving}
-              >
-                {btn.label}
-              </button>
-            ))}
+            ].map((btn, i) => {
+              const advanceMatch =
+                Number(totals.netTotal) > Number(formData.advanceAmount);
+              let isDisabled = saving;
+              if (!isDisabled) {
+                if (type === "advanceOrder") {
+                  isDisabled = btn.action === "advanceOrder";
+                } else if (advanceMatch) {
+                  isDisabled = btn.action !== "advanceOrder";
+                }
+              }
+
+              return (
+                <button
+                  key={i}
+                  className={`bg-blue-600 text-white px-4 py-4 rounded-lg text-sm ${
+                    isDisabled
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-blue-700"
+                  }`}
+                  onClick={() => !isDisabled && handleSave(btn.action)}
+                  disabled={isDisabled}
+                >
+                  {btn.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

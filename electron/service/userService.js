@@ -68,7 +68,9 @@ export function searchCustomers(searchTerm = "") {
   }
 }
 
-function generateCustomerId(branchId) {
+function generateCustomerId() {
+  const branch = getUser();
+  const branchId = branch.id;
   const RANGE = 10000000;
   const base = branchId * RANGE;
   const row = db
@@ -82,7 +84,6 @@ function generateCustomerId(branchId) {
   let sequence = 0;
 
   if (row && row.maxId) {
-    // strip out branch prefix → only sequence part
     sequence = row.maxId - base;
   }
 
@@ -92,7 +93,6 @@ function generateCustomerId(branchId) {
 export async function addCustomer(customer) {
   try {
     const branch = getUser();
-
     const fields = [
       "id",
       "branch_id",

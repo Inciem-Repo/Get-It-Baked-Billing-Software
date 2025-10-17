@@ -220,7 +220,7 @@ export function generateBillHTML(bill) {
 
       <div class="bill-info">
         <div class="bill-info-row"><span>Date :</span><span>${
-          bill.date || new Date().toLocaleDateString("en-IN")
+          bill.date || "N/A"
         }</span></div>
         <div class="bill-info-row"><span>Invoice NO :</span><span>${
           bill.invoice || "N/A"
@@ -257,9 +257,7 @@ export function generateBillHTML(bill) {
               <td class="right">${item.taxableValue || "0.00"}</td>
               <td class="right">${item.qty || 1}</td>
               <td class="right">${item.taxPercent || "N/A"}</td>
-              <td class="right">${((item.qty || 1) * (item.price || 0)).toFixed(
-                2
-              )}</td>
+              <td class="right">${(item.qty || 1) * (item.price || 0)}</td>
             </tr>
           `
               )
@@ -293,6 +291,23 @@ export function generateBillHTML(bill) {
         <div class="total-row final"><span>Net Total:</span><span>${
           bill.totals?.netTotal
         }</span></div>
+        ${
+          bill.cashAmount || bill.onlineAmount
+            ? `
+              <div class="separator"></div>
+              ${
+                bill.cashAmount
+                  ? `<div class="total-row"><span>Cash Amount:</span><span>${bill.cashAmount}</span></div>`
+                  : ""
+              }
+              ${
+                bill.onlineAmount
+                  ? `<div class="total-row"><span>Online Amount:</span><span>${bill.onlineAmount}</span></div>`
+                  : ""
+              }
+            `
+            : ""
+        }
       </div>
 
       <div class="footer"><em>Thank you for choosing us!<br>For any Complaints & Suggestions,<br>Contact us on +91 9539938305</em></div>

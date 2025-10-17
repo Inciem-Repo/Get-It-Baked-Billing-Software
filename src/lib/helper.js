@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-export function mapBillForPrint(billData, branchInfo) {
+export function mapBillForPrint(billData, branchInfo, splitData = {}) {
   return {
     shopName: branchInfo.branch_name || "Shop",
     address: branchInfo.branchaddress || "",
@@ -23,31 +23,28 @@ export function mapBillForPrint(billData, branchInfo) {
     items: billData.items.map((item) => ({
       name: item.productName || item.item,
       qty: item.quantity,
-      price: Number(item.unitPrice.toFixed(2)),
-      taxPercent: item.igstRate + item.cgstRate || 0,
-      taxableValue: Number(item.taxableValue.toFixed(2)),
+      price: item.unitPrice,
+      taxPercent: item.igstRate + item.cgstRate || item.tax,
+      taxableValue: item.taxableValue,
     })),
     totals: {
-      taxableValue: billData.items
-        .reduce((sum, i) => sum + i.taxableValue, 0)
-        .toFixed(2),
-      totalCGST: billData.items
-        .reduce((sum, i) => sum + i.cgstAmount, 0)
-        .toFixed(2),
-      totalSGST: billData.items
-        .reduce((sum, i) => sum + i.cgstAmount, 0)
-        .toFixed(2),
-      grandTotal: billData.amount.toFixed(2),
+      taxableValue: billData.items.reduce((sum, i) => sum + i.taxableValue, 0),
+      totalCGST: billData.items.reduce((sum, i) => sum + i.cgstAmount, 0),
+      totalSGST: billData.items.reduce((sum, i) => sum + i.cgstAmount, 0),
+      grandTotal: Number(billData.grandTotal).toFixed(2),
       discountPercent: billData.discount || 0,
-      netTotal: (
-        (billData.amount || 0) -
-        (billData.amount * (billData.discount || 0)) / 100
-      ).toFixed(2),
+      netTotal: Number(billData.amount).toFixed(2),
     },
     paymentType: billData.paymentType,
-    advanceAmount: billData.advanceAmount.toFixed(2),
-    balanceToCustomer: billData.balanceToCustomer.toFixed(2),
-    balanceAmount: billData.balanceAmount.toFixed(2),
+    advanceAmount: billData.advanceAmount,
+    balanceToCustomer: billData.balanceToCustomer,
+    balanceAmount: billData.balanceAmount,
+    ...(splitData.cashAmount || splitData.onlineAmount
+      ? {
+          cashAmount: Number(splitData.cashAmount || 0).toFixed(2),
+          onlineAmount: Number(splitData.onlineAmount || 0).toFixed(2),
+        }
+      : {}),
   };
 }
 
@@ -66,4 +63,73 @@ export async function exportToExcel(data, fileName) {
   const finalFileName = `${baseName}_${formattedDate}.${ext}`;
 
   XLSX.writeFile(workbook, finalFileName);
+}
+
+export function getDeliveryStatusMessage(deliveryDate, deliveryTime, status) {
+  if (!deliveryDate || !deliveryTime) return "N/A";
+  if (status == "cancelled") return "Cancelled";
+
+  // Parse as local date/time (avoids UTC offset issues)
+  const [year, month, day] = deliveryDate.split("-").map(Number);
+  const [hour, minute] = deliveryTime.split(":").map(Number);
+  const deliveryDateTime = new Date(year, month - 1, day, hour, minute);
+
+  const now = new Date();
+  const diffMs = deliveryDateTime - now;
+
+  // --- CASE 1: Delivery time already passed ---
+  if (diffMs <= 0) {
+    const validStatuses = ["pending", "baking", "ready", "cancelled"];
+
+    // Served orders
+    if (status === "ready" || status === "served") {
+      return "Served";
+    }
+
+    // Invalid or missing status
+    if (!validStatuses.includes(status?.toLowerCase())) {
+      return "Not Served";
+    }
+
+    // If valid status but still pending or baking after time passed
+    return "Not Served";
+  }
+
+  // --- CASE 2: Time remaining ---
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const days = Math.floor(diffMinutes / (60 * 24));
+  const hours = Math.floor((diffMinutes % (60 * 24)) / 60);
+  const minutes = diffMinutes % 60;
+
+  if (days > 0) return `${days}d`;
+  if (hours > 0) return `${hours}h`;
+  if (minutes > 0) return `${minutes}m`;
+  return "1m";
+}
+
+export function convertTo12Hour(time24) {
+  if (!time24) return "";
+
+  let [hour, minute] = time24.split(":");
+  hour = parseInt(hour, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${hour}:${minute} ${ampm}`;
+}
+
+export function formatDateTimeTo12Hour(datetime) {
+  if (!datetime) return "";
+
+  const [datePart, timePart] = datetime.split(" ");
+  if (!timePart) return datetime;
+
+  let [hour, minute] = timePart.split(":").map(Number);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+
+  return `${datePart} ${hour}:${minute.toString().padStart(2, "0")} ${ampm}`;
+}
+
+export function round2(value) {
+  return Number(parseFloat(value || 0).toFixed(2));
 }
