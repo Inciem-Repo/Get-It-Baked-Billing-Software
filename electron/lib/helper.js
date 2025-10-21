@@ -12,18 +12,7 @@ export function mapBillForPrint(bill, branchInfo) {
     address: branchInfo.branchaddress || "",
     mobile: branchInfo.bnumber,
     email: branchInfo.Email,
-    date:
-      new Date(bill.billdate).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }) +
-      " " +
-      new Date(bill.created_at).toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }),
+    date: formatToIST(bill.created_at),
     invoice: bill.invid,
     customer: bill.customerName || "Walking Customer",
     gstNo: branchInfo.gst_no || "",
@@ -111,4 +100,29 @@ export function sanitizeRow(row) {
     }
   }
   return cleanRow;
+}
+
+export function formatToIST(dateString) {
+  if (!dateString) return "";
+
+  try {
+    const dateObj = new Date(dateString);
+    if (isNaN(dateObj)) throw new Error("Invalid date");
+    const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
+    const istDate = new Date(dateObj.getTime() + istOffsetMs);
+
+    const options = {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    };
+
+    return new Intl.DateTimeFormat("en-IN", options).format(istDate);
+  } catch (err) {
+    console.error("Invalid date passed to formatToIST:", dateString, err);
+    return dateString;
+  }
 }
