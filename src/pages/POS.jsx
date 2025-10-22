@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Header from "../components/layout/header";
-import { getUserInfo } from "../service/authService";
 import { getProductsInfo } from "../service/productsService";
 import SearchableDropdown from "../components/common/SearchableDropdown";
-import { useReactToPrint } from "react-to-print";
-import BillPrint from "./BillPrint";
 import { getCustomersInfo } from "../service/userService";
 import {
   handleGenerateInvoice,
@@ -116,7 +113,6 @@ const POS = () => {
         handleF3Click();
       }
 
-      // Step 1: F4 focuses the select
       if (e.key === "F4") {
         e.preventDefault();
         if (paymentSelectRef.current) {
@@ -186,17 +182,13 @@ const POS = () => {
     setItems((prev) =>
       prev.map((item) => {
         if (item.id !== id) return item;
-
         const updatedItem = { ...item, [field]: value };
-
-        // Recalculate totals based on quantity change
         const totalTax = updatedItem.cgstRate + updatedItem.igstRate;
         const taxableValue =
           (updatedItem.unitPrice / (1 + totalTax / 100)) * updatedItem.quantity;
         const cgstAmount = (taxableValue * updatedItem.cgstRate) / 100;
         const igstAmount = (taxableValue * updatedItem.igstRate) / 100;
         const total = taxableValue + cgstAmount + igstAmount;
-
         return { ...updatedItem, taxableValue, cgstAmount, igstAmount, total };
       })
     );
@@ -233,7 +225,6 @@ const POS = () => {
 
     const grossTotal = totalTaxableValue + totalCGST + totalIGST;
 
-    // --- percentage discount ---
     const discountPercent = formData.discount || 0;
     const discountAmount = (grossTotal * discountPercent) / 100;
 
@@ -323,6 +314,9 @@ const POS = () => {
       return;
     }
     setSaving(true);
+    const filledItems = items.filter(
+      (item) => item.productId && item.productName
+    );
     const updatedFormData = {
       ...formData,
       customer: selectedCustomer?.name || formData.customer,
@@ -337,7 +331,8 @@ const POS = () => {
       totalTaxableValue: Number(totals.totalTaxableValue.toFixed(2)),
     };
 
-    const newBill = { ...updatedFormData, items };
+    const newBill = { ...updatedFormData, items: filledItems };
+    console.log(newBill);
     setFormData(updatedFormData);
     setBill(newBill);
     try {
