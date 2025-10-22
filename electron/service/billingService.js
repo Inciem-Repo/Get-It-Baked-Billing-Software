@@ -136,8 +136,6 @@ export async function addBilling(billData) {
           paymentType: "split",
         });
       }
-
-      // Cash bill (generate new invoiceNo)
       if (cashAmount > 0) {
         const cashInvoice = generateInvoiceNo(branch.id, "splitCash");
         billsToInsert.push({
@@ -148,7 +146,6 @@ export async function addBilling(billData) {
         });
       }
     } else {
-      // Normal single bill
       billsToInsert.push(billData);
     }
 
@@ -166,26 +163,22 @@ export async function addBilling(billData) {
         bill_type: "sale",
         paymenttype: bill.paymentType || "",
         billdate: bill.date,
-        branch_id: branch.id,
+        branch_id: String(branch.id),
         pdflink: "",
         customernote: bill.customerNote,
         advanceamount: bill.advanceAmount || 0,
         balanceAmount: bill.balanceToCustomer || 0,
         synced: 0,
       };
-      
+
       const billingFields = Object.keys(billingData);
       const billingValues = Object.values(billingData);
-
-      // Insert into local DB
       const billingQuery = buildInsertQuery("billing", billingFields);
       const result = db.prepare(billingQuery).run(billingValues);
       const billId = result.lastInsertRowid;
 
       if (!billId)
         throw new Error("Bill insert failed — invoice may already exist.");
-
-      // Insert items into local DB
       for (const item of bill.items) {
         const itemData = {
           bill_id: billId,
@@ -204,7 +197,6 @@ export async function addBilling(billData) {
         db.prepare(itemQuery).run(itemValues);
       }
 
-      // --- Try syncing online if available ---
       const online = await isOnline();
       if (online) {
         try {
@@ -227,8 +219,6 @@ export async function addBilling(billData) {
           );
 
           const liveBillId = liveResult.insertId;
-
-          // Insert items into live DB
           for (const item of bill.items) {
             const itemData = {
               bill_id: liveBillId,

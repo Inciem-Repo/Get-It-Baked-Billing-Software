@@ -142,23 +142,16 @@ function updateLastSync(table) {
 async function findMissingBills(branchId) {
   const mysqlConn = await getMySqlConnection();
 
-  // Live IDs
   const [liveRows] = await mysqlConn.query(
     "SELECT id FROM billing WHERE branch_id = ?",
     [branchId]
   );
   const liveIds = new Set(liveRows.map((r) => String(r.id).trim()));
-
-  // Local IDs (normalize branch_id to int when filtering)
   const localRows = db
     .prepare("SELECT id FROM billing WHERE CAST(branch_id AS INTEGER) = ?")
     .all(branchId);
   const localIds = new Set(localRows.map((r) => String(r.id).trim()));
-
-  // Missing in live
   const missingInLive = [...localIds].filter((id) => !liveIds.has(id));
-
-  // Missing in local
   const missingInLocal = [...liveIds].filter((id) => !localIds.has(id));
 
   console.log(`Branch ${branchId}:`);
@@ -186,7 +179,6 @@ async function pushLocalToLive(
   for (const row of localRows) {
     const { synced, ...liveRow } = row;
 
-    // 🔥 Normalize fields
     if (liveRow.branch_id !== undefined) {
       liveRow.branch_id = String(parseInt(liveRow.branch_id, 10));
     }
@@ -197,14 +189,11 @@ async function pushLocalToLive(
     const { query, values } = buildUpsertQuery(table, liveRow);
 
     try {
-      // Push parent row
       await mysqlConn.execute(query, values);
     } catch (err) {
       console.error("Failed to push row:", row, "\nError:", err.message);
-      continue; // ❌ skip marking synced
+      continue;
     }
-
-    // --- Special case for billing with child items ---
     if (table === "billing") {
       const billId = row[idField];
       const itemSelectQuery = buildSelectQuery("billing_items", {
@@ -216,8 +205,6 @@ async function pushLocalToLive(
 
       for (const item of items) {
         const { synced: itemSynced, ...liveItem } = item;
-
-        // Normalize child references
         if (liveItem.bill_id !== undefined) {
           liveItem.bill_id = String(parseInt(liveItem.bill_id, 10));
         }
@@ -240,15 +227,12 @@ async function pushLocalToLive(
           );
         }
       }
-
-      // ✅ Only mark parent as synced if all items succeeded
       if (allItemsSynced) {
         db.prepare(`UPDATE ${table} SET synced = 1 WHERE ${idField} = ?`).run(
           row[idField]
         );
       }
     } else {
-      // ✅ For other tables, mark synced immediately after success
       db.prepare(`UPDATE ${table} SET synced = 1 WHERE ${idField} = ?`).run(
         row[idField]
       );
@@ -260,8 +244,6 @@ async function reconcileAndResyncBilling(branchId = null) {
 
   const localBills = db.prepare(`SELECT id, invid, synced FROM billing`).all();
   if (!localBills.length) return;
-
-  // Get all live invoice IDs (invid) for comparison
   let liveQuery = `SELECT id, invid FROM billing`;
   let liveParams = [];
   if (branchId !== null) {
@@ -270,7 +252,6 @@ async function reconcileAndResyncBilling(branchId = null) {
   }
   const [liveRows] = await mysqlConn.execute(liveQuery, liveParams);
 
-  // Map live invid → live id
   const liveInvMap = new Map(liveRows.map((r) => [r.invid, r.id]));
 
   for (const bill of localBills) {
@@ -286,10 +267,7 @@ async function reconcileAndResyncBilling(branchId = null) {
       if (!synced) {
         console.log(`Pushing new bill ${invid} to live`);
 
-        // Exclude local auto-increment `id` and `synced` before insert
         const { id: _, synced: __, ...liveRow } = row;
-
-        // Insert into live DB
         const { query, values } = buildUpsertQuery("billing", liveRow);
         let liveBillId;
         try {
@@ -303,7 +281,6 @@ async function reconcileAndResyncBilling(branchId = null) {
           continue;
         }
 
-        // Push child items, remapping localBillId → liveBillId
         const items = db
           .prepare(`SELECT * FROM billing_items WHERE bill_id = ?`)
           .all(localBillId);
@@ -335,14 +312,12 @@ async function reconcileAndResyncBilling(branchId = null) {
           );
         }
       } else {
-        // Already synced but missing in live → archive locally
         console.log(`Archiving bill ${invid} locally (deleted in live)`);
 
         db.prepare(
           `INSERT INTO billing_archive SELECT * FROM billing WHERE invid = ?`
         ).run(invid);
 
-        // Map billing items to local bill ID
         db.prepare(
           `INSERT INTO billing_items_archive SELECT * FROM billing_items WHERE bill_id = ?`
         ).run(localBillId);
@@ -361,7 +336,6 @@ async function reconcileAndResyncBilling(branchId = null) {
 async function pullBillingForBranch(branchId) {
   const mysqlConn = await getMySqlConnection();
   try {
-    // const today = new Date().toISOString().slice(0, 10);
     const [billsRaw] = await mysqlConn.execute(
       `SELECT * FROM billing WHERE branch_id = ?`,
       [branchId]
@@ -388,10 +362,10 @@ async function pullBillingForBranch(branchId) {
         }
         try {
           const row = sanitizeRow(bill);
-          const fields = Object.keys(row);
-          const values = Object.values(row);
-          const query = buildInsertOrIgnoreQuery("billing", sanitizeRow(bill));
-          console.log(query, values);
+          const { query, values } = buildInsertOrIgnoreQuery(
+            "billing",
+            sanitizeRow(bill)
+          );
           db.prepare(query).run(values);
           console.log(`Inserted bill (invid=${bill.invid})`);
         } catch (err) {
@@ -401,8 +375,6 @@ async function pullBillingForBranch(branchId) {
     });
 
     insertBills(bills);
-
-    // Fetch items for inserted bills only
     const newBillIds = bills
       .map((b) => {
         const local = db
@@ -426,7 +398,7 @@ async function pullBillingForBranch(branchId) {
               "billing_items",
               sanitizeRow(item)
             );
-            console.log(query, values)
+            console.log(query, values);
             db.prepare(query).run(values);
           } catch (err) {
             console.error(
