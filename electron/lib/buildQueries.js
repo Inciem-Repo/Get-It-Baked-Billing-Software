@@ -99,12 +99,13 @@ export function buildBillHistorySelectQuery(conditions = {}, options = {}) {
   return query.trim();
 }
 
-export function buildSearchQuery(table, searchKey, searchTerm) {
+export function buildSearchQuery(table, searchKey1, searchKey2, searchTerm) {
+  const escapedTerm = searchTerm.replace(/'/g, "''");
   const where = searchTerm
-    ? `${searchKey} LIKE '%${searchTerm.replace(/'/g, "''")}%'`
+    ? `(${searchKey1} LIKE '%${escapedTerm}%' OR ${searchKey2} LIKE '%${escapedTerm}%')`
     : "";
   return (
-    `SELECT id, name FROM ${table}` +
+    `SELECT id, name, mobile FROM ${table}` +
     (where ? ` WHERE ${where}` : "") +
     " LIMIT 50"
   );
@@ -386,7 +387,7 @@ export function buildExpenseCountQuery(table, conditions = {}, alias = "") {
 }
 
 export function getTodayExpense() {
-  const today = new Date().toISOString().split("T")[0]; 
+  const today = new Date().toISOString().split("T")[0];
   const query = `SELECT SUM(amount) AS total_today FROM expense WHERE date = '${today}'`;
   const row = db.prepare(query).get();
   return row?.total_today || 0;

@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Header from "../components/layout/header";
-import { getUserInfo } from "../service/authService";
 import { getProductsInfo } from "../service/productsService";
 import SearchableDropdown from "../components/common/SearchableDropdown";
-import { useReactToPrint } from "react-to-print";
-import BillPrint from "./BillPrint";
 import { getCustomersInfo } from "../service/userService";
 import {
   handleGenerateInvoice,
@@ -20,6 +17,7 @@ import AddCustomerModal from "../components/AddCustomerModal";
 const POS = () => {
   const { branchInfo } = useAuth();
   const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
   const [items, setItems] = useState([
     {
       id: 1,
@@ -115,7 +113,6 @@ const POS = () => {
         handleF3Click();
       }
 
-      // Step 1: F4 focuses the select
       if (e.key === "F4") {
         e.preventDefault();
         if (paymentSelectRef.current) {
@@ -185,17 +182,13 @@ const POS = () => {
     setItems((prev) =>
       prev.map((item) => {
         if (item.id !== id) return item;
-
         const updatedItem = { ...item, [field]: value };
-
-        // Recalculate totals based on quantity change
         const totalTax = updatedItem.cgstRate + updatedItem.igstRate;
         const taxableValue =
           (updatedItem.unitPrice / (1 + totalTax / 100)) * updatedItem.quantity;
         const cgstAmount = (taxableValue * updatedItem.cgstRate) / 100;
         const igstAmount = (taxableValue * updatedItem.igstRate) / 100;
         const total = taxableValue + cgstAmount + igstAmount;
-
         return { ...updatedItem, taxableValue, cgstAmount, igstAmount, total };
       })
     );
@@ -232,7 +225,6 @@ const POS = () => {
 
     const grossTotal = totalTaxableValue + totalCGST + totalIGST;
 
-    // --- percentage discount ---
     const discountPercent = formData.discount || 0;
     const discountAmount = (grossTotal * discountPercent) / 100;
 
@@ -321,7 +313,10 @@ const POS = () => {
       toast.error("⚠️ Please select the payment type.");
       return;
     }
-
+    setSaving(true);
+    const filledItems = items.filter(
+      (item) => item.productId && item.productName
+    );
     const updatedFormData = {
       ...formData,
       customer: selectedCustomer?.name || formData.customer,
@@ -336,7 +331,8 @@ const POS = () => {
       totalTaxableValue: Number(totals.totalTaxableValue.toFixed(2)),
     };
 
-    const newBill = { ...updatedFormData, items };
+    const newBill = { ...updatedFormData, items: filledItems };
+    console.log(newBill);
     setFormData(updatedFormData);
     setBill(newBill);
     try {
@@ -373,6 +369,9 @@ const POS = () => {
     } catch (error) {
       console.error("Save error:", error);
       toast.error(" Something went wrong while saving the bill.");
+      setSaving(false);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -390,6 +389,7 @@ const POS = () => {
             <div className="relative">
               <input
                 type="date"
+                readOnly
                 value={formData.date}
                 onChange={(e) =>
                   setFormData({ ...formData, date: e.target.value })
@@ -421,6 +421,7 @@ const POS = () => {
                 onSelect={handleCustomerSelect}
                 value={selectedCustomer}
                 labelKey="name"
+                searchKeys={["mobile"]}
                 fetchItems={async (searchTerm) => {
                   const customers = await getCustomersInfo(searchTerm);
                   return [{ id: 0, name: "Walking Customer" }, ...customers];
@@ -553,13 +554,14 @@ const POS = () => {
                       <input
                         type="number"
                         min="0"
+                        step="0.01"
                         className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-center"
                         value={item.quantity}
                         onChange={(e) =>
                           updateItem(
                             item.id,
                             "quantity",
-                            Math.max(0, parseInt(e.target.value) || 0)
+                            Math.max(0, parseFloat(e.target.value) || 0)
                           )
                         }
                       />
@@ -753,14 +755,14 @@ const POS = () => {
           </div>
         </div>
       </div>
-      <div className="bg-white border-t border-gray-200 px-6 p-4 sticky bottom-0 shadow-lg">
+      <div className="bg-white border-t border-gray-200 px-4 py-2 sticky bottom-0 shadow-md">
         <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">
               Payment Type * [F4+Enter]
             </span>
             <select
-              className="border border-gray-300 rounded-lg px-3 py-2 bg-blue-600 text-white"
+              className="border border-gray-300 rounded-lg px-3 py-3  bg-blue-600 text-white text-sm"
               value={formData.paymentType}
               ref={paymentSelectRef}
               onChange={(e) =>
@@ -770,31 +772,30 @@ const POS = () => {
               <option>— Select payment Type —</option>
               <option>Cash</option>
               <option>Online</option>
-              <option>Split</option>
+              {/* <option>Split</option> */}
             </select>
           </div>
+
           <div className="flex space-x-2">
-            <button
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              onClick={() => handleSave("save")}
-            >
-              Save Details
-            </button>
-            <button
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              onClick={() => handleSave("saveAndPrint")}
-            >
-              Save & Print
-            </button>
-            <button
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              onClick={() => handleSave("saveAndList")}
-            >
-              Save & List
-            </button>
+            {[
+              // { label: "Advance Order", action: "save" },
+              { label: "Save Details", action: "save" },
+              { label: "Save & Print", action: "saveAndPrint" },
+              { label: "Save & List", action: "saveAndList" },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                className="bg-blue-600 text-white px-4 py-4 rounded-lg hover:bg-blue-700 text-sm fl"
+                onClick={() => handleSave(btn.action)}
+                disabled={saving}
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
+
       <AddCustomerModal
         isOpen={showAddCustomerModal}
         onClose={() => setShowAddCustomerModal(false)}

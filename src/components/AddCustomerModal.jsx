@@ -33,18 +33,6 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     return re.test(mobile);
   };
 
-  // const validateGSTIN = (gstin) => {
-  //   if (!gstin) return true;
-  // };
-
-  // const validatePAN = (pan) => {
-  //   if (!pan) return true;
-  // };
-
-  // const validatePostalCode = (postalCode) => {
-  //   if (!postalCode) return true;
-  // };
-
   const handleInputChange = (field, value) => {
     if (field.includes(".")) {
       const [parent, child] = field.split(".");
