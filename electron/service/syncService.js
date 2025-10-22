@@ -141,15 +141,11 @@ function updateLastSync(table) {
 }
 async function findMissingBills(branchId) {
   const mysqlConn = await getMySqlConnection();
-
-  // Live IDs
   const [liveRows] = await mysqlConn.query(
     "SELECT id FROM billing WHERE branch_id = ?",
     [branchId]
   );
   const liveIds = new Set(liveRows.map((r) => String(r.id).trim()));
-
-  // Local IDs (normalize branch_id to int when filtering)
   const localRows = db
     .prepare("SELECT id FROM billing WHERE CAST(branch_id AS INTEGER) = ?")
     .all(branchId);
@@ -185,8 +181,6 @@ async function pushLocalToLive(
 
   for (const row of localRows) {
     const { synced, ...liveRow } = row;
-
-    // 🔥 Normalize fields
     if (liveRow.branch_id !== undefined) {
       liveRow.branch_id = String(parseInt(liveRow.branch_id, 10));
     }
@@ -197,14 +191,12 @@ async function pushLocalToLive(
     const { query, values } = buildUpsertQuery(table, liveRow);
 
     try {
-      // Push parent row
       await mysqlConn.execute(query, values);
     } catch (err) {
       console.error("Failed to push row:", row, "\nError:", err.message);
-      continue; // ❌ skip marking synced
+      continue;
     }
 
-    // --- Special case for billing with child items ---
     if (table === "billing") {
       const billId = row[idField];
       const itemSelectQuery = buildSelectQuery("billing_items", {
@@ -216,8 +208,6 @@ async function pushLocalToLive(
 
       for (const item of items) {
         const { synced: itemSynced, ...liveItem } = item;
-
-        // Normalize child references
         if (liveItem.bill_id !== undefined) {
           liveItem.bill_id = String(parseInt(liveItem.bill_id, 10));
         }
@@ -241,14 +231,12 @@ async function pushLocalToLive(
         }
       }
 
-      // ✅ Only mark parent as synced if all items succeeded
       if (allItemsSynced) {
         db.prepare(`UPDATE ${table} SET synced = 1 WHERE ${idField} = ?`).run(
           row[idField]
         );
       }
     } else {
-      // ✅ For other tables, mark synced immediately after success
       db.prepare(`UPDATE ${table} SET synced = 1 WHERE ${idField} = ?`).run(
         row[idField]
       );
@@ -361,7 +349,6 @@ async function reconcileAndResyncBilling(branchId = null) {
 async function pullBillingForBranch(branchId) {
   const mysqlConn = await getMySqlConnection();
   try {
-    // const today = new Date().toISOString().slice(0, 10);
     const [billsRaw] = await mysqlConn.execute(
       `SELECT * FROM billing WHERE branch_id = ?`,
       [branchId]
@@ -375,6 +362,7 @@ async function pullBillingForBranch(branchId) {
     console.log(`Got ${billsRaw.length} bills from live (today)`);
 
     const bills = billsRaw.map((b) => ({ ...sanitizeRow(b), synced: 1 }));
+    console.log(bills);
 
     const insertBills = db.transaction((chunk) => {
       for (const bill of chunk) {
@@ -389,9 +377,10 @@ async function pullBillingForBranch(branchId) {
         try {
           const row = sanitizeRow(bill);
           const fields = Object.keys(row);
-          const values = Object.values(row);
-          const query = buildInsertOrIgnoreQuery("billing", sanitizeRow(bill));
-          console.log(query, values);
+          const { query, values } = buildInsertOrIgnoreQuery(
+            "billing",
+            sanitizeRow(bill)
+          );
           db.prepare(query).run(values);
           console.log(`Inserted bill (invid=${bill.invid})`);
         } catch (err) {
@@ -426,7 +415,6 @@ async function pullBillingForBranch(branchId) {
               "billing_items",
               sanitizeRow(item)
             );
-            console.log(query, values)
             db.prepare(query).run(values);
           } catch (err) {
             console.error(
