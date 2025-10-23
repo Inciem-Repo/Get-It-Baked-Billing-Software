@@ -39,6 +39,18 @@ export default function CreateKOT() {
     };
     getProducts();
   }, []);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "F3") {
+        e.preventDefault();
+        setShowAddCustomerModal(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
   const fetchToken = async () => {
     const token = await getKotToken();
     setKotToken(token);
@@ -76,6 +88,7 @@ export default function CreateKOT() {
       )
     );
   };
+
   const handleAddCustomer = async (customer) => {
     const payload = {
       ...customer,

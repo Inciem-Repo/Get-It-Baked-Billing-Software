@@ -91,7 +91,9 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     if (!formData.companyName.trim()) {
       newErrors.companyName = "Customer/Company name is required";
     }
-    if (!formData.mobile && !validateMobile(formData.mobile)) {
+    if (!formData.mobile) {
+      newErrors.mobile = "Mobile number is required";
+    } else if (!/^\d{10}$/.test(formData.mobile)) {
       newErrors.mobile = "Please enter a valid 10-digit mobile number";
     }
     if (formData.email && !validateEmail(formData.email)) {

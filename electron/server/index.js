@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import os from "os";
 import fs from "fs";
+import net from "net";
 import {
   getKotConfig,
   getKotOrdersByBranch,
@@ -13,6 +14,9 @@ import cors from "cors";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const PORT = 3000;
+const HOST = "0.0.0.0";
+const localIp = getLocalIp();
 
 function getLocalIp() {
   const interfaces = os.networkInterfaces();
@@ -95,13 +99,25 @@ export function startServer() {
     }
   }
 
-  const PORT = 3000;
-  const HOST = "0.0.0.0";
-  const localIp = getLocalIp();
+  function checkPortInUse(port) {
+    return new Promise((resolve) => {
+      const tester = net
+        .createServer()
+        .once("error", () => resolve(true))
+        .once("listening", () => {
+          tester.close(() => resolve(false));
+        })
+        .listen(port);
+    });
+  }
 
   app.listen(PORT, HOST, async () => {
+    const inUse = await checkPortInUse(PORT);
+    if (inUse) {
+      console.log(`Server already running on port ${PORT}`);
+      return;
+    }
     await setupDefaultKotConfig(localIp, PORT);
-    console.log(`KOT View: http://localhost:${PORT}/kot`);
     console.log(`Network: http://${localIp}:${PORT}/kot`);
   });
 }

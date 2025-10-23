@@ -218,7 +218,7 @@ const Expense = () => {
                       <button
                         key={type}
                         onClick={() => handlePaymentTypeChange(type)}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b ${
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 ${
                           paymentTypeFilter === type
                             ? "bg-blue-50 text-blue-600 font-medium"
                             : "text-gray-700"

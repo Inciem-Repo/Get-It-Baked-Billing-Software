@@ -157,7 +157,7 @@ const POS = () => {
     if (advance < grandTotal) {
       balanceAmount = Number((netTotal - advance).toFixed(2));
     } else if (advance > grandTotal) {
-      balanceToCustomer = Number((advance - grandTotal).toFixed(2));
+      balanceToCustomer = Number((advance - netTotal).toFixed(2));
     }
 
     return {
@@ -234,10 +234,16 @@ const POS = () => {
           amount: formData.amount,
           amountReceived: Number(data?.advanceamount) || 0,
         }));
-        setSelectedCustomer({ id: data.customer_id, name: data.customer_name });
+        setSelectedCustomer({
+          id: data?.customer_id ?? customer.id,
+          name: data?.customer_name || customer.name,
+        });
       } else {
         data = response.data;
-        setSelectedCustomer({ id: data.customerId, name: data.customerName });
+        setSelectedCustomer({
+          id: data?.customerId ?? customer.id,
+          name: data?.customerName || customer.name,
+        });
       }
       const { customerId, items = [] } = data;
       if (customerId && customerId !== 0) {
@@ -888,7 +894,7 @@ const POS = () => {
         <div className="flex justify-between items-center">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">
-              Payment Type * [F4+Enter]
+              Payment Type * [F4 + keydown]
             </span>
             <select
               className="border border-gray-300 rounded-lg px-3 py-3  bg-blue-600 text-white text-sm"

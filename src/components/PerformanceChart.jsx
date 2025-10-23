@@ -11,7 +11,6 @@ import {
 } from "recharts";
 import { getBranchPerformanceSummary } from "../service/billingService";
 
-// Helper: format Date object to YYYY-MM-DD
 function formatDateYMD(date) {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -51,7 +50,7 @@ export function PerformanceChart() {
     const today = formatDateYMD(new Date());
     setDateRange((prev) => ({
       ...prev,
-      [name]: value > today ? today : value, // never allow future dates
+      [name]: value > today ? today : value,
     }));
   };
 
@@ -60,7 +59,6 @@ export function PerformanceChart() {
       <div className="p-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
         <h3 className="text-lg font-semibold text-gray-900">Performance</h3>
         <div className="flex items-center gap-2">
-          <CalendarIcon className="h-4 w-4 text-gray-600" />
           <input
             type="date"
             name="from"

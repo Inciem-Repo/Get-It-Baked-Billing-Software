@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { getKotConfig, updateKotConfig } from "../service/KOTService";
 import toast from "react-hot-toast";
+import path from "path";
 
 const SOUND_OPTIONS = [
   { value: "alarm_1.mp3", label: "Notification Bell" },
@@ -48,7 +49,6 @@ export default function KOTSettings() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Function to get device IP address
   const getDeviceIP = async () => {
     try {
       return new Promise((resolve) => {
@@ -58,7 +58,7 @@ export default function KOTSettings() {
           window.webkitRTCPeerConnection;
 
         if (!RTCPeerConnection) {
-          resolve("192.168.1.1"); // Fallback IP
+          resolve("0.0.0.0");
           return;
         }
 
@@ -67,12 +67,12 @@ export default function KOTSettings() {
         pc.createOffer()
           .then(pc.setLocalDescription.bind(pc))
           .catch(() => {
-            resolve("192.168.1.1"); // Fallback IP
+            resolve("0.0.0.0");
           });
 
         pc.onicecandidate = (ice) => {
           if (!ice || !ice.candidate || !ice.candidate.candidate) {
-            resolve("192.168.1.1");
+            resolve("0.0.0.0");
             return;
           }
 
@@ -179,7 +179,23 @@ export default function KOTSettings() {
     }
 
     setPlayingPreview(true);
-    const audio = new Audio(`/audio/${formData.sound_file}`);
+    let resolvedPath = path.join(
+      process.resourcesPath,
+      "public",
+      "audio",
+      formData.sound_file
+    );
+
+    if (window.location.origin.startsWith("http")) {
+      resolvedPath = path.join("public", "audio", formData.sound_file);
+    }
+
+    const audioUrl = resolvedPath.startsWith("file://")
+      ? resolvedPath
+      : `file://${resolvedPath.replace(/\\/g, "/")}`;
+    console.log({audioUrl});
+
+    const audio = new Audio(audioUrl);
     audioRef.current = audio;
 
     audio.play().catch((err) => {
@@ -263,7 +279,7 @@ export default function KOTSettings() {
 
   return (
     <div className="max-w-2xl">
-      <div className="bg-white min-h-[calc(100vh-90px)] shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-white min-h-[calc(100vh-90px)] overflow-auto shadow-lg border border-gray-100">
         <div className="p-8 space-y-8">
           <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
             <div className="flex items-center justify-between">
@@ -320,12 +336,6 @@ export default function KOTSettings() {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">
-                Automatically generated from device IP:{" "}
-                <code className="bg-gray-100 px-1 rounded">
-                  http://{deviceIP}:3000/kot
-                </code>
-              </p>
             </div>
           </div>
           <div className="space-y-3">
@@ -413,7 +423,7 @@ export default function KOTSettings() {
                   </button>
 
                   {dropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                    <div className="top-full  left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
                       {SOUND_OPTIONS.map((option) => (
                         <button
                           key={option.value}
