@@ -99,7 +99,9 @@ ipcMain.handle("update-billing", async (event, billData) => {
     return { success: false, error: err.message };
   }
 });
+
 ipcMain.handle("open-print-preview", async (event, billData) => {
+ 
   if (previewWindow && !previewWindow.isDestroyed()) {
     previewWindow.close();
   }

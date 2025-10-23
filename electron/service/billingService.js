@@ -83,16 +83,16 @@ export function generateInvoiceNo(branchId, paymentType) {
 
   switch (paymentType.toLowerCase()) {
     case "splitcash":
-      prefix = `INVSCL${branchId}`;
+      prefix = `INVSC${branchId}`;
       break;
     case "cash":
-      prefix = `INVCL${branchId}`;
+      prefix = `INVC${branchId}`;
       break;
     case "split":
-      prefix = `INVSL${branchId}`;
+      prefix = `INVS${branchId}`;
       break;
     default:
-      prefix = `INVL${branchId}`;
+      prefix = `INV${branchId}`;
       break;
   }
 
@@ -109,7 +109,6 @@ export function generateInvoiceNo(branchId, paymentType) {
     .get(`${prefix}%`);
 
   let newNumber;
-
   if (row) {
     const lastNumber = parseInt(row.invid.split("-").pop(), 10);
     newNumber = String(lastNumber + 1).padStart(5, "0");
