@@ -257,7 +257,9 @@ export function generateBillHTML(bill) {
               <td class="right">${item.taxableValue || "0.00"}</td>
               <td class="right">${item.qty || 1}</td>
               <td class="right">${item.taxPercent || "N/A"}</td>
-              <td class="right">${(item.qty || 1) * (item.price || 0)}</td>
+              <td class="right">${((item.qty || 1) * (item.price || 0)).toFixed(
+                2
+              )}</td>
             </tr>
           `
               )

@@ -26,8 +26,8 @@ contextBridge.exposeInMainWorld("api", {
 
   searchCustomers: (searchTerm) =>
     ipcRenderer.invoke("search-customers", searchTerm),
-  printInvoice: (billId, branchInfo) =>
-    ipcRenderer.invoke("print-invoice-by-id", { billId, branchInfo }),
+  printInvoice: (billId, branchInfo, type) =>
+    ipcRenderer.invoke("print-invoice-by-id", { billId, branchInfo,type }),
   getBillDetails: (billId) => ipcRenderer.invoke("get-bill-by-id", billId),
 
   getAllBillHistory: (conditions) =>

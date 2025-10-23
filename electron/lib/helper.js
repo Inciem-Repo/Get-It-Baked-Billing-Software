@@ -6,7 +6,7 @@ export function md5(value) {
   return crypto.createHash("md5").update(value).digest("hex");
 }
 
-export function mapBillForPrint(bill, branchInfo) {
+export function mapBillForPrint(bill, branchInfo, type) {
   return {
     shopName: branchInfo.branch_name || "Shop",
     address: branchInfo.branchaddress || "",
@@ -45,8 +45,11 @@ export function mapBillForPrint(bill, branchInfo) {
         .reduce((sum, i) => sum + (i.igst_value || 0), 0)
         .toFixed(2),
       grandTotal: Number(bill.advanceamount || 0).toFixed(2),
-      discountPercent: bill.discountPercentf || 0,
-      netTotal: bill.grandTotalf.toFixed(2),
+      discountPercent: type == "branch" ? bill.discountPercentf : 0,
+      netTotal:
+        type == "branch"
+          ? bill.grandTotalf.toFixed(2)
+          : Number(bill.advanceamount || 0).toFixed(2),
     },
     paymentType: bill.paymenttype,
     advanceAmount: Number(bill.advanceamount || 0).toFixed(2),

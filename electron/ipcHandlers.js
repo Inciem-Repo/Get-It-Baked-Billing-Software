@@ -199,39 +199,42 @@ ipcMain.handle("print-bill", async () => {
   });
 });
 
-ipcMain.handle("print-invoice-by-id", async (event, { billId, branchInfo }) => {
-  const bill = getBillingById(billId);
-  const billData = mapBillForPrint(bill, branchInfo);
-  if (!bill) {
-    console.error("No bill found for ID:", billId);
-    return;
+ipcMain.handle(
+  "print-invoice-by-id",
+  async (event, { billId, branchInfo, type }) => {
+    const bill = getBillingById(billId);
+    const billData = mapBillForPrint(bill, branchInfo, type);
+    if (!bill) {
+      console.error("No bill found for ID:", billId);
+      return;
+    }
+    if (previewWindow && !previewWindow.isDestroyed()) {
+      previewWindow.close();
+    }
+
+    previewWindow = new BrowserWindow({
+      width: 350,
+      height: 700,
+      modal: true,
+      parent: BrowserWindow.getFocusedWindow(),
+      webPreferences: {
+        contextIsolation: false,
+        nodeIntegration: true,
+      },
+    });
+
+    const html = generateBillHTML(billData);
+    previewWindow.loadURL(
+      "data:text/html;charset=utf-8," + encodeURIComponent(html)
+    );
+
+    previewWindow.on("closed", () => {
+      previewWindow = null;
+    });
+
+    return true;
   }
-  if (previewWindow && !previewWindow.isDestroyed()) {
-    previewWindow.close();
-  }
-
-  previewWindow = new BrowserWindow({
-    width: 350,
-    height: 700,
-    modal: true,
-    parent: BrowserWindow.getFocusedWindow(),
-    webPreferences: {
-      contextIsolation: false,
-      nodeIntegration: true,
-    },
-  });
-
-  const html = generateBillHTML(billData);
-  previewWindow.loadURL(
-    "data:text/html;charset=utf-8," + encodeURIComponent(html)
-  );
-
-  previewWindow.on("closed", () => {
-    previewWindow = null;
-  });
-
-  return true;
-});
+);
 
 ipcMain.handle("get-all-bill-history", (event, conditions) => {
   return getAllBillHistory(conditions);

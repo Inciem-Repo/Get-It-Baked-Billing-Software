@@ -434,8 +434,10 @@ const POS = () => {
       igstAmount: round2(item.igstAmount),
       total: round2(item.total),
     }));
-
-    const newBill = { ...updatedFormData, items: roundedItems };
+    const filledItems = roundedItems.filter(
+      (item) => item.productId && item.productName
+    );
+    const newBill = { ...updatedFormData, items: filledItems };
     setFormData(updatedFormData);
     try {
       let result = null;
@@ -473,7 +475,6 @@ const POS = () => {
           break;
 
         case "saveAndPrint": {
-          console.log(savedBill);
           const printableBill = mapBillForPrint(
             newBill,
             branchInfo,
@@ -484,6 +485,7 @@ const POS = () => {
                 }
               : {}
           );
+          console.log({ printableBill });
           await window.api.openPrintPreview(printableBill);
           resetBillingForm();
           break;
@@ -687,13 +689,14 @@ const POS = () => {
                       <input
                         type="number"
                         min="0"
+                        step="0.01"
                         className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-center"
                         value={item.quantity}
                         onChange={(e) =>
                           updateItem(
                             item.id,
                             "quantity",
-                            Math.max(0, parseInt(e.target.value) || 0)
+                            Math.max(0, parseFloat(e.target.value) || 0)
                           )
                         }
                       />

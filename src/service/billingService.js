@@ -36,9 +36,9 @@ export const saveSplitBillingInfo = async (billData) => {
     return { success: false, message: "Something went wrong while saving." };
   }
 };
-export const getBillingInvoice = async (billId, branchInfo) => {
+export const getBillingInvoice = async (billId, branchInfo, type) => {
   try {
-    return await window.api.printInvoice(billId, branchInfo);
+    return await window.api.printInvoice(billId, branchInfo, type);
   } catch (error) {
     console.error("Billing fetch error:", error);
     return { success: false, message: "Something went wrong." };
