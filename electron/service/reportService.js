@@ -4,6 +4,7 @@ import {
   buildExpenseSelectQuery,
   buildExpenseTotalQuery,
 } from "../lib/buildQueries.js";
+import { getUser } from "./userService.js";
 
 export async function getExpenseDetails(page = 1, limit = 10, filters = {}) {
   const offset = (page - 1) * limit;
@@ -54,7 +55,7 @@ export function addExpense(expenseData) {
     expense_payment,
     category_id,
     remarks = null,
-    date = new Date().toISOString().slice(0, 10), 
+    date = new Date().toISOString().slice(0, 10),
   } = expenseData;
 
   const stmt = db.prepare(`
@@ -63,7 +64,7 @@ export function addExpense(expenseData) {
   `);
 
   const result = stmt.run(
-    branch_id,
+    String(branch_id),
     amount,
     expense_payment,
     category_id,
@@ -78,4 +79,45 @@ export function addExpense(expenseData) {
     synced: 0,
     date,
   };
+}
+export async function getExpenseSummary() {
+  try {
+    const branch = getUser();
+    const branchId = branch.id;
+
+    // Total expense summary
+    const totalSummary = db
+      .prepare(
+        `
+        SELECT 
+          IFNULL(SUM(amount), 0) AS totalExpense
+        FROM expense
+        WHERE branch_id  = ?
+        `
+      )
+      .get(branchId);
+
+    // Today's expense summary
+    const today = new Date().toISOString().slice(0, 10);
+    const todaySummary = db
+      .prepare(
+        `
+        SELECT 
+          IFNULL(SUM(amount), 0) AS todayExpense
+        FROM expense
+        WHERE branch_id = ?
+          AND DATE(date) = ?
+        `
+      )
+      .get(branchId, today);
+
+    // Return safe values
+    return {
+      totalExpense: parseFloat(totalSummary.totalExpense || 0).toFixed(2),
+      todayExpense: parseFloat(todaySummary.todayExpense || 0).toFixed(2),
+    };
+  } catch (error) {
+    console.error("Error fetching expense summary:", error);
+    throw new Error("Failed to get expense summary");
+  }
 }

@@ -91,24 +91,13 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     if (!formData.companyName.trim()) {
       newErrors.companyName = "Customer/Company name is required";
     }
-    if (!formData.mobile && !validateMobile(formData.mobile)) {
+    if (!formData.mobile) {
+      newErrors.mobile = "Mobile number is required";
+    } else if (!/^\d{10}$/.test(formData.mobile)) {
       newErrors.mobile = "Please enter a valid 10-digit mobile number";
     }
     if (formData.email && !validateEmail(formData.email)) {
       newErrors.email = "Please enter a valid email address";
-    }
-    if (
-      formData.billingAddress.postalCode &&
-      !validatePostalCode(formData.billingAddress.postalCode)
-    ) {
-      newErrors.billingPostalCode = "Please enter a valid postal code";
-    }
-    if (
-      !formData.shippingAddress.sameAsBilling &&
-      formData.shippingAddress.postalCode &&
-      !validatePostalCode(formData.shippingAddress.postalCode)
-    ) {
-      newErrors.shippingPostalCode = "Please enter a valid postal code";
     }
 
     setErrors(newErrors);

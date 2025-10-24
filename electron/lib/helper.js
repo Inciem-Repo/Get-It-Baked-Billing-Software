@@ -6,7 +6,7 @@ export function md5(value) {
   return crypto.createHash("md5").update(value).digest("hex");
 }
 
-export function mapBillForPrint(bill, branchInfo) {
+export function mapBillForPrint(bill, branchInfo, type) {
   return {
     shopName: branchInfo.branch_name || "Shop",
     address: branchInfo.branchaddress || "",
@@ -19,11 +19,9 @@ export function mapBillForPrint(bill, branchInfo) {
     items: bill.items.map((item) => ({
       name: item.productName || `Item ${item.item_id}`,
       qty: item.qty,
-      price: Number(item.unit_price.toFixed(2)),
-      taxPercent: item.productTax
-        ? Number(parseFloat(item.productTax).toFixed(2))
-        : item.tax,
-      taxableValue: Number(item.taxable_value.toFixed(2)),
+      price: item.unit_price,
+      taxPercent: item.productTax ? item.productTax : item.tax,
+      taxableValue: item.taxable_value,
     })),
     totals: {
       taxableValue: bill.items
@@ -35,12 +33,12 @@ export function mapBillForPrint(bill, branchInfo) {
       totalSGST: bill.items
         .reduce((sum, i) => sum + (i.igst_value || 0), 0)
         .toFixed(2),
-      grandTotal: Number(bill.grandTotalf).toFixed(2),
-      discountPercent: bill.discountPercentf || 0,
-      netTotal: (
-        (bill.grandTotalf || 0) -
-        (bill.grandTotalf * (bill.discountPercentf || 0)) / 100
-      ).toFixed(2),
+      grandTotal: Number(bill.advanceamount || 0).toFixed(2),
+      discountPercent: type == "branch" ? bill.discountPercentf : 0,
+      netTotal:
+        type == "branch"
+          ? bill.grandTotalf.toFixed(2)
+          : Number(bill.advanceamount || 0).toFixed(2),
     },
     paymentType: bill.paymenttype,
     advanceAmount: Number(bill.advanceamount || 0).toFixed(2),

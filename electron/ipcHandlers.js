@@ -11,10 +11,13 @@ import {
 import { getProductsDetails } from "./service/produtsService.js";
 import {
   addBilling,
+  addSplitBillController,
   generateInvoiceNo,
   getAllBillHistory,
   getBillingById,
   getBillingDetails,
+  getBillingSummary,
+  getPerformanceSummary,
   updateBilling,
 } from "./service/billingService.js";
 import pkg from "electron-pos-printer";
@@ -28,7 +31,27 @@ import {
   addExpense,
   getExpenseCategories,
   getExpenseDetails,
+  getExpenseSummary,
 } from "./service/reportService.js";
+import {
+  addKot,
+  generateKotToken,
+  getKotByToken,
+  getKotConfig,
+  getKotOrdersByBranch,
+  getLastKotsByBranch,
+  insertKotConfig,
+  updateKotConfig,
+  updateKotInvoiceByToken,
+  updateKOTStatusService,
+} from "./service/KOTService.js";
+import {
+  addAdvanceBilling,
+  convertAdvanceToBilling,
+  getAdvanceBillingById,
+  getAdvanceBillingDetails,
+  updateAdvanceBillTypeController,
+} from "./service/advanceBillingService.js";
 
 const settings = new store();
 
@@ -176,43 +199,69 @@ ipcMain.handle("print-bill", async () => {
   });
 });
 
-ipcMain.handle("print-invoice-by-id", async (event, { billId, branchInfo }) => {
-  const bill = getBillingById(billId);
-  const billData = mapBillForPrint(bill, branchInfo);
-  if (!bill) {
-    console.error("No bill found for ID:", billId);
-    return;
+ipcMain.handle(
+  "print-invoice-by-id",
+  async (event, { billId, branchInfo, type }) => {
+    const bill = getBillingById(billId);
+    const billData = mapBillForPrint(bill, branchInfo, type);
+    if (!bill) {
+      console.error("No bill found for ID:", billId);
+      return;
+    }
+    if (previewWindow && !previewWindow.isDestroyed()) {
+      previewWindow.close();
+    }
+
+    previewWindow = new BrowserWindow({
+      width: 350,
+      height: 700,
+      modal: true,
+      parent: null,
+      modal: false,
+      parent: BrowserWindow.getFocusedWindow(),
+      webPreferences: {
+        contextIsolation: false,
+        nodeIntegration: true,
+      },
+    });
+    previewWindow.setMenuBarVisibility(false);
+    previewWindow.setAutoHideMenuBar(true);
+    const html = generateBillHTML(billData);
+    previewWindow.loadURL(
+      "data:text/html;charset=utf-8," + encodeURIComponent(html)
+    );
+
+    previewWindow.on("closed", () => {
+      previewWindow = null;
+    });
+
+    return true;
   }
-  if (previewWindow && !previewWindow.isDestroyed()) {
-    previewWindow.close();
-  }
-
-  previewWindow = new BrowserWindow({
-    width: 350,
-    height: 700,
-    modal: true,
-    parent: BrowserWindow.getFocusedWindow(),
-    webPreferences: {
-      contextIsolation: false,
-      nodeIntegration: true,
-    },
-  });
-
-  const html = generateBillHTML(billData);
-  previewWindow.loadURL(
-    "data:text/html;charset=utf-8," + encodeURIComponent(html)
-  );
-
-  previewWindow.on("closed", () => {
-    previewWindow = null;
-  });
-
-  return true;
-});
+);
 
 ipcMain.handle("get-all-bill-history", (event, conditions) => {
   return getAllBillHistory(conditions);
 });
+ipcMain.handle("billing-getSummary", async (event) => {
+  try {
+    const result = await getBillingSummary();
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+ipcMain.handle(
+  "get-performance-summary",
+  async (event, { fromDate, toDate }) => {
+    try {
+      const summary = await getPerformanceSummary(fromDate, toDate);
+      return summary;
+    } catch (error) {
+      console.error("IPC get-performance-summary error:", error);
+      return [];
+    }
+  }
+);
 ipcMain.handle("get-bill-by-id", async (event, billId) => {
   try {
     return getBillingById(billId);
@@ -266,5 +315,177 @@ ipcMain.handle("get-expense-categories", async () => {
   } catch (err) {
     console.error("Error fetching categories:", err);
     return [];
+  }
+});
+
+ipcMain.handle("expense-getSummary", async () => {
+  try {
+    const result = await getExpenseSummary();
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+//KOT
+// ipcMain.handle("kot-add", async (event, kotData) => {
+//   try {
+//     const result = addKot(kotData);
+//     return { success: true, data: result };
+//   } catch (err) {
+//     console.error("Failed to add KOT:", err);
+//     return { success: false, err };
+//   }
+// });
+ipcMain.handle("kot-add", async (event, kotData) => {
+  try {
+    const result = addKot(kotData);
+    return { success: true, data: result };
+  } catch (err) {
+    // 1️⃣ Log to console (shows in main process logs)
+    console.error("❌ Failed to add KOT:", err);
+    // 3️⃣ Return serializable info to renderer
+    return {
+      success: false,
+      message: err.message,
+      stack: err.stack,
+      name: err.name,
+    };
+  }
+});
+ipcMain.handle("billing-addSplitBill", async (event, billData) => {
+  try {
+    const result = await addSplitBillController(billData);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("IPC Error - addSplitBill:", error);
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle("kot-generate-token", async (event) => {
+  try {
+    const token = generateKotToken();
+    return token;
+  } catch (err) {
+    console.error("Failed to generate KOT token:", err);
+    return null;
+  }
+});
+ipcMain.handle("kot-getBy-Branch", async (event) => {
+  return await getKotOrdersByBranch();
+});
+ipcMain.handle("update-kot-status", async (event, { kotId, status }) => {
+  try {
+    const result = await updateKOTStatusService(kotId, status);
+    return { success: true, result };
+  } catch (error) {
+    console.error("Error updating KOT status:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("get-kot-by-token", async (event, kotToken) => {
+  try {
+    const kotData = await getKotByToken(kotToken);
+    return { success: true, data: kotData };
+  } catch (error) {
+    console.error("IPC get-kot-by-token error:", error);
+    return { success: false, message: error.message };
+  }
+});
+ipcMain.handle("updateKOTInvoiceByToken", async (event, data) => {
+  try {
+    const result = await updateKotInvoiceByToken(data.kotToken, data.invoiceId);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+ipcMain.handle("get-last-kot", async (event) => {
+  try {
+    const lastKot = await getLastKotsByBranch();
+    return lastKot;
+  } catch (error) {
+    console.error("IPC get-last-kot error:", error);
+    return null;
+  }
+});
+
+ipcMain.handle("insert-kot-config", async (event, data) => {
+  try {
+    const result = await insertKotConfig(data);
+    return result;
+  } catch (error) {
+    console.error("IPC insert-kot-config error:", error);
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle("get-kot-config", async (event) => {
+  try {
+    const result = await getKotConfig();
+    return result;
+  } catch (error) {
+    console.error("IPC get-kot-config error:", error);
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle("update-kot-config", async (event, data) => {
+  try {
+    const result = await updateKotConfig(data);
+    return result;
+  } catch (error) {
+    console.error("IPC update-kot-config error:", error);
+    return { success: false, message: error.message };
+  }
+});
+
+//advance billing
+ipcMain.handle("add-advance-billing", async (event, billData) => {
+  try {
+    const billIds = await addAdvanceBilling(billData);
+    return { success: true, billIds };
+  } catch (err) {
+    console.error("Error inserting advance billing:", err);
+    return { success: false, error: err.message };
+  }
+});
+ipcMain.handle(
+  "get-advance-billing-details",
+  async (event, { page, limit, filters }) => {
+    try {
+      return await getAdvanceBillingDetails(page, limit, filters);
+    } catch (error) {
+      console.error("Error fetching advance billing details:", error);
+      throw error;
+    }
+  }
+);
+
+ipcMain.handle("get-advance-billing-by-id", async (event, id) => {
+  try {
+    return await getAdvanceBillingById(id);
+  } catch (error) {
+    console.error("Error fetching advance billing details:", error);
+    throw error;
+  }
+});
+ipcMain.handle("billing-convertAdvance", async (event, args) => {
+  try {
+    const result = await convertAdvanceToBilling(args);
+    return result;
+  } catch (err) {
+    console.error("IPC Error - convertAdvanceToBilling:", err);
+    return { success: false, message: err.message };
+  }
+});
+ipcMain.handle("update-advance-bill-type", async (event, id, billType) => {
+  try {
+    const result = await updateAdvanceBillTypeController(id, billType);
+    return result;
+  } catch (err) {
+    console.error("Error updating advance bill type:", err);
+    return { success: false, message: err.message };
   }
 });

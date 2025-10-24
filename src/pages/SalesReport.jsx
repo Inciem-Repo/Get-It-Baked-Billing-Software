@@ -2,13 +2,13 @@ import React from "react";
 import Report from "../components/Report";
 import { useAuth } from "../context/AuthContext";
 import { getBillingInfo, getBillingInvoice } from "../service/billingService";
-import Header from "../components/layout/header";
+import Header from "../components/layout/Header";
 
 function SalesReport() {
   const { branchInfo } = useAuth();
 
   return (
-    <div className="flex-1 bg-gray-50 overflow-auto">
+    <div className="flex flex-col min-h-screen w-full bg-gray-50">
       <Header title={"Sales Report"} />
       <Report
         title="Billing History"

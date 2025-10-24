@@ -22,9 +22,23 @@ export const saveBillingInfo = async (billData) => {
   }
 };
 
-export const getBillingInvoice = async (billId, branchInfo) => {
+export const saveSplitBillingInfo = async (billData) => {
   try {
-    return await window.api.printInvoice(billId, branchInfo);
+    const result = await window.api.addSplitBill(billData);
+    if (result.success) {
+      return result;
+    } else {
+      console.error("Failed to save bill:", result.message);
+      return { success: false, message: result.message };
+    }
+  } catch (error) {
+    console.error("Billing save error:", error);
+    return { success: false, message: "Something went wrong while saving." };
+  }
+};
+export const getBillingInvoice = async (billId, branchInfo, type) => {
+  try {
+    return await window.api.printInvoice(billId, branchInfo, type);
   } catch (error) {
     console.error("Billing fetch error:", error);
     return { success: false, message: "Something went wrong." };
@@ -55,6 +69,32 @@ export const handleGenerateInvoice = async (branchId, paymentType) => {
     return result.invoiceNo;
   } catch (error) {
     console.error("Failed:", error);
+  }
+};
+
+export const getBillingSummary = async () => {
+  try {
+    return await window.api.getSummary();
+  } catch (error) {
+    console.error("Billing fetch error:", error);
+    return { success: false, message: "Something went wrong." };
+  }
+};
+
+export const getBranchExpenseSummary = async () => {
+  try {
+    return await window.api.getExpenseSummary();
+  } catch (error) {
+    console.error("Billing fetch error:", error);
+    return { success: false, message: "Something went wrong." };
+  }
+};
+export const getBranchPerformanceSummary = async (fromDate, toDate) => {
+  try {
+    return await window.api.getPerformanceSummary(fromDate, toDate);
+  } catch (error) {
+    console.error("Billing fetch error:", error);
+    return { success: false, message: "Something went wrong." };
   }
 };
 
