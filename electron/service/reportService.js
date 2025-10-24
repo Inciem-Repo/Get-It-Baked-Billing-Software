@@ -64,7 +64,7 @@ export function addExpense(expenseData) {
   `);
 
   const result = stmt.run(
-    branch_id,
+    String(branch_id),
     amount,
     expense_payment,
     category_id,
@@ -80,7 +80,6 @@ export function addExpense(expenseData) {
     date,
   };
 }
-
 export async function getExpenseSummary() {
   try {
     const branch = getUser();
@@ -93,8 +92,7 @@ export async function getExpenseSummary() {
         SELECT 
           IFNULL(SUM(amount), 0) AS totalExpense
         FROM expense
-        WHERE synced = 1
-          AND CAST(branch_id AS INTEGER) = ?
+        WHERE branch_id  = ?
         `
       )
       .get(branchId);
@@ -107,14 +105,13 @@ export async function getExpenseSummary() {
         SELECT 
           IFNULL(SUM(amount), 0) AS todayExpense
         FROM expense
-        WHERE synced = 1
-          AND CAST(branch_id AS INTEGER) = ?
+        WHERE branch_id = ?
           AND DATE(date) = ?
         `
       )
       .get(branchId, today);
 
-    // ✅ Return safe values
+    // Return safe values
     return {
       totalExpense: parseFloat(totalSummary.totalExpense || 0).toFixed(2),
       todayExpense: parseFloat(todaySummary.todayExpense || 0).toFixed(2),

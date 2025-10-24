@@ -30,6 +30,9 @@ function createWindow() {
     `file://${path.join(__dirname, "../dist/index.html")}`;
 
   mainWindow.loadURL(startUrl);
+  mainWindow.setMenuBarVisibility(false);
+  mainWindow.setAutoHideMenuBar(true);
+  
   mainWindow.once("ready-to-show", () => {
     initAutoUpdater(mainWindow);
   });

@@ -193,7 +193,7 @@ export default function KOTSettings() {
     const audioUrl = resolvedPath.startsWith("file://")
       ? resolvedPath
       : `file://${resolvedPath.replace(/\\/g, "/")}`;
-    console.log({audioUrl});
+    console.log({ audioUrl });
 
     const audio = new Audio(audioUrl);
     audioRef.current = audio;

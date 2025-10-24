@@ -195,6 +195,7 @@ export function generateBillHTML(bill) {
         .items-header th { text-align: left; font-weight: bold; padding: 2px; }
         .item-row td { padding: 2px; }
         .right { text-align: center; }
+        .sl_no {display:flex; align-item:start;}
         .totals { margin-top: 15px; font-size: 12px; }
         .total-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
         .total-row.final { font-weight: bold; }
@@ -238,12 +239,12 @@ export function generateBillHTML(bill) {
       <table class="items-table">
         <thead class="items-header">
           <tr>
-            <th>Sl.</th>
+            <th>Sl</th>
             <th>Name</th>
             <th class="right">MRP</th>
             <th class="right">Qty</th>
-            <th class="right">Tax %</th>
-            <th class="right">Total</th>
+            <th class="right">Tax(%)</th>
+            <th style="text-align: end;">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -252,7 +253,7 @@ export function generateBillHTML(bill) {
               ?.map(
                 (item, i) => `
             <tr class="item-row">
-              <td>${i + 1}</td>
+              <td class="sl_no">${i + 1}</td>
               <td>${item.name}</td>
               <td class="right">${item.taxableValue || "0.00"}</td>
               <td class="right">${item.qty || 1}</td>

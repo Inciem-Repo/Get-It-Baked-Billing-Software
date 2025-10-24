@@ -99,19 +99,6 @@ const AddCustomerModal = ({ isOpen, onClose, onAddCustomer }) => {
     if (formData.email && !validateEmail(formData.email)) {
       newErrors.email = "Please enter a valid email address";
     }
-    if (
-      formData.billingAddress.postalCode &&
-      !validatePostalCode(formData.billingAddress.postalCode)
-    ) {
-      newErrors.billingPostalCode = "Please enter a valid postal code";
-    }
-    if (
-      !formData.shippingAddress.sameAsBilling &&
-      formData.shippingAddress.postalCode &&
-      !validatePostalCode(formData.shippingAddress.postalCode)
-    ) {
-      newErrors.shippingPostalCode = "Please enter a valid postal code";
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

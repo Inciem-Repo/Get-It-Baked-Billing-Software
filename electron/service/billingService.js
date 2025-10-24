@@ -172,7 +172,7 @@ export async function addBilling(billData) {
         bill_type: "sale",
         paymenttype: bill.paymentType || "",
         billdate: bill.date,
-        branch_id: branch.id,
+        branch_id: String(branch.id),
         pdflink: "",
         customernote: bill.customerNote,
         advanceamount: bill.advanceAmount || 0,

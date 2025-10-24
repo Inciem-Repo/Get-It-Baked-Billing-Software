@@ -11,7 +11,7 @@ const Expense = () => {
   const { branchInfo } = useAuth();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [paymentTypeFilter, setPaymentTypeFilter] = useState("all");
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState("All");
   const [showPaymentDropdown, setShowPaymentDropdown] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
 
@@ -214,7 +214,7 @@ const Expense = () => {
 
                 {showPaymentDropdown && (
                   <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-full">
-                    {["all", "Cash", "Online"].map((type) => (
+                    {["All", "Cash", "Online"].map((type) => (
                       <button
                         key={type}
                         onClick={() => handlePaymentTypeChange(type)}

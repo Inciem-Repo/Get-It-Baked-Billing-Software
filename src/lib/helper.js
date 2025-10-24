@@ -28,11 +28,17 @@ export function mapBillForPrint(billData, branchInfo, splitData = {}) {
       taxableValue: item.taxableValue,
     })),
     totals: {
-      taxableValue: billData.items.reduce((sum, i) => sum + i.taxableValue, 0),
-      totalCGST: billData.items.reduce((sum, i) => sum + i.cgstAmount, 0),
-      totalSGST: billData.items.reduce((sum, i) => sum + i.cgstAmount, 0),
+      taxableValue: Number(
+        billData.items.reduce((sum, i) => sum + i.taxableValue, 0)
+      ).toFixed(2),
+      totalCGST: Number(
+        billData.items.reduce((sum, i) => sum + i.cgstAmount, 0)
+      ).toFixed(2),
+      totalSGST: Number(
+        billData.items.reduce((sum, i) => sum + i.cgstAmount, 0)
+      ).toFixed(2),
       grandTotal: Number(billData.grandTotal).toFixed(2),
-      discountPercent: billData.discount || 0,
+      discountPercent: Number(billData.discount || 0).toFixed(2),
       netTotal: Number(billData.amount).toFixed(2),
     },
     paymentType: billData.paymentType,

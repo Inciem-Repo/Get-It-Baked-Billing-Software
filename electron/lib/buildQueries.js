@@ -193,7 +193,7 @@ export function buildExpenseSelectQuery(conditions = {}, options = {}) {
       whereClauses.push(`e.date <= '${value}'`);
     } else if (key === "expense_payment") {
       // skip if "all"
-      if (value !== "all") {
+      if (value !== "All") {
         whereClauses.push(`e.expense_payment = '${value}'`);
       }
     } else if (["page", "limit"].includes(key)) {
@@ -243,7 +243,7 @@ export function buildExpenseTotalQuery(conditions = {}) {
     } else if (key === "toDate") {
       whereClauses.push(`e.date <= '${value}'`);
     } else if (key === "expense_payment") {
-      if (value !== "all") {
+      if (value !== "All") {
         whereClauses.push(`e.expense_payment = '${value}'`);
       }
     } else {
@@ -275,7 +275,7 @@ export function buildExpenseCountQuery(table, conditions = {}, alias = "") {
         `${alias}.${table === "expense" ? "date" : "created_at"} <= '${value}'`
       );
     } else if (key === "expense_payment") {
-      if (value !== "all") {
+      if (value !== "All") {
         whereClauses.push(`${alias}.expense_payment = '${value}'`);
       }
     } else {

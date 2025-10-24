@@ -154,9 +154,9 @@ const POS = () => {
     let balanceAmount = 0;
     let balanceToCustomer = 0;
 
-    if (advance < grandTotal) {
+    if (advance < netTotal) {
       balanceAmount = Number((netTotal - advance).toFixed(2));
-    } else if (advance > grandTotal) {
+    } else if (advance > netTotal) {
       balanceToCustomer = Number((advance - netTotal).toFixed(2));
     }
 
@@ -434,10 +434,21 @@ const POS = () => {
       igstAmount: round2(item.igstAmount),
       total: round2(item.total),
     }));
+    // Validation: check for zero quantity
+    const invalidItem = roundedItems.find(
+      (item) => item.productId && item.quantity <= 0
+    );
+
+    if (invalidItem) {
+      toast.error(`Please enter quantity for item: ${invalidItem.productName}`);
+      return;
+    }
+
     const filledItems = roundedItems.filter(
       (item) => item.productId && item.productName
     );
     const newBill = { ...updatedFormData, items: filledItems };
+    console.log(newBill);
     setFormData(updatedFormData);
     try {
       let result = null;
@@ -691,16 +702,22 @@ const POS = () => {
                         min="0"
                         step="0.01"
                         className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-center"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateItem(
-                            item.id,
-                            "quantity",
-                            Math.max(0, parseFloat(e.target.value) || 0)
-                          )
-                        }
+                        value={item.quantity === null ? "" : item.quantity}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "") {
+                            updateItem(item.id, "quantity", null);
+                            return;
+                          }
+
+                          const num = parseFloat(value);
+                          if (!isNaN(num)) {
+                            updateItem(item.id, "quantity", Math.max(0, num));
+                          }
+                        }}
                       />
                     </td>
+
                     <td className="px-4 py-3 text-center">{item?.unit}</td>
                     <td className="px-4 py-3 text-sm text-center">
                       {item.taxableValue?.toFixed(2)}

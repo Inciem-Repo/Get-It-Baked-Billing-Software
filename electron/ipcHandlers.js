@@ -216,13 +216,16 @@ ipcMain.handle(
       width: 350,
       height: 700,
       modal: true,
+      parent: null,
+      modal: false,
       parent: BrowserWindow.getFocusedWindow(),
       webPreferences: {
         contextIsolation: false,
         nodeIntegration: true,
       },
     });
-
+    previewWindow.setMenuBarVisibility(false);
+    previewWindow.setAutoHideMenuBar(true);
     const html = generateBillHTML(billData);
     previewWindow.loadURL(
       "data:text/html;charset=utf-8," + encodeURIComponent(html)
