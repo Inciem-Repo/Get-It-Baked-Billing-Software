@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import Header from "../components/layout/Header";
+import Header from "../components/layout/header";
 import { getProductsInfo } from "../service/productsService";
 import SearchableDropdown from "../components/common/SearchableDropdown";
 import { getCustomersInfo } from "../service/userService";
@@ -184,6 +184,7 @@ const POS = () => {
         e.preventDefault();
         handleF3Click();
       }
+
       if (e.key === "F4") {
         e.preventDefault();
         if (paymentSelectRef.current) {
@@ -324,6 +325,44 @@ const POS = () => {
     }));
   }, [items, type]);
 
+  const addNewRow = () => {
+    const newItem = {
+      id: Date.now(),
+      item: "",
+      unitPrice: 0,
+      quantity: 1,
+      unit: "",
+      taxableValue: 0,
+      cgstRate: 0,
+      cgstAmount: 0,
+      igstRate: 0,
+      igstAmount: 0,
+      total: 0,
+    };
+    setItems([...items, newItem]);
+  };
+
+  const removeRow = (id) => {
+    if (items.length > 1) {
+      setItems(items.filter((item) => item.id !== id));
+    }
+  };
+
+  const updateItem = (id, field, value) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const updatedItem = { ...item, [field]: value };
+        const totalTax = updatedItem.cgstRate + updatedItem.igstRate;
+        const taxableValue =
+          (updatedItem.unitPrice / (1 + totalTax / 100)) * updatedItem.quantity;
+        const cgstAmount = (taxableValue * updatedItem.cgstRate) / 100;
+        const igstAmount = (taxableValue * updatedItem.igstRate) / 100;
+        const total = taxableValue + cgstAmount + igstAmount;
+        return { ...updatedItem, taxableValue, cgstAmount, igstAmount, total };
+      })
+    );
+  };
   const handleF3Click = () => {
     setShowAddCustomerModal(true);
   };
@@ -345,6 +384,57 @@ const POS = () => {
       toast.error("Failed to add:");
     }
   };
+
+  const calculateTotals = () => {
+    const totalTaxableValue = items.reduce(
+      (sum, item) => sum + item.taxableValue,
+      0
+    );
+    const totalCGST = items.reduce((sum, item) => sum + item.cgstAmount, 0);
+    const totalIGST = items.reduce((sum, item) => sum + item.igstAmount, 0);
+
+    const grossTotal = totalTaxableValue + totalCGST + totalIGST;
+
+    const discountPercent = formData.discount || 0;
+    const discountAmount = (grossTotal * discountPercent) / 100;
+
+    const grandTotal = grossTotal;
+    const netTotal = grossTotal - discountAmount;
+
+    const advance = formData.advanceAmount || 0;
+
+    let balanceAmount = 0;
+    let balanceToCustomer = 0;
+
+    if (advance < grandTotal) {
+      balanceAmount = Number((grandTotal - advance).toFixed(2));
+    } else if (advance > grandTotal) {
+      balanceToCustomer = Number((advance - grandTotal).toFixed(2));
+    }
+
+    return {
+      totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
+      totalCGST: Number(totalCGST.toFixed(2)),
+      totalIGST: Number(totalIGST.toFixed(2)),
+      grossTotal: Number(grossTotal.toFixed(2)),
+      netTotal: Number(netTotal.toFixed(2)),
+      discountAmount: Number(discountAmount.toFixed(2)),
+      grandTotal: Number(grandTotal.toFixed(2)),
+      balanceAmount,
+      balanceToCustomer,
+    };
+  };
+
+  const totals = calculateTotals();
+
+  useEffect(() => {
+    const getProducts = async () => {
+      const result = await getProductsInfo();
+      setProducts(result);
+    };
+    getProducts();
+  }, []);
+
   const handleCustomerSelect = (customer) => {
     setSelectedCustomer(customer);
   };
@@ -409,6 +499,9 @@ const POS = () => {
       return;
     }
     setSaving(true);
+    const filledItems = items.filter(
+      (item) => item.productId && item.productName
+    );
     const updatedFormData = {
       ...formData,
       customer: selectedCustomer?.name || formData.customer,
@@ -444,9 +537,6 @@ const POS = () => {
       return;
     }
 
-    const filledItems = roundedItems.filter(
-      (item) => item.productId && item.productName
-    );
     const newBill = { ...updatedFormData, items: filledItems };
     console.log(newBill);
     setFormData(updatedFormData);
@@ -702,19 +792,14 @@ const POS = () => {
                         min="0"
                         step="0.01"
                         className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-center"
-                        value={item.quantity === null ? "" : item.quantity}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === "") {
-                            updateItem(item.id, "quantity", null);
-                            return;
-                          }
-
-                          const num = parseFloat(value);
-                          if (!isNaN(num)) {
-                            updateItem(item.id, "quantity", Math.max(0, num));
-                          }
-                        }}
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateItem(
+                            item.id,
+                            "quantity",
+                            Math.max(0, parseFloat(e.target.value) || 0)
+                          )
+                        }
                       />
                     </td>
 
@@ -927,7 +1012,7 @@ const POS = () => {
               <option>— Select payment Type —</option>
               <option>Cash</option>
               <option>Online</option>
-              <option>Split</option>
+              {/* <option>Split</option> */}
             </select>
           </div>
 

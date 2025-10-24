@@ -165,6 +165,7 @@ async function findMissingBills(branchId) {
   console.log(`⚠ Missing in Live: ${missingInLive.length}`, missingInLive);
   console.log(`⚠ Missing in Local: ${missingInLocal.length}`, missingInLocal);
 }
+
 async function pushLocalToLive(
   table,
   localCondition = "synced = 0",
@@ -354,13 +355,14 @@ async function reconcileAndResyncBilling(branchId = null) {
 
   await mysqlConn.end();
 }
+
 async function pullBillingForBranch(branchId) {
   const mysqlConn = await getMySqlConnection();
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    // const today = new Date().toISOString().slice(0, 10);
     const [billsRaw] = await mysqlConn.execute(
-      `SELECT * FROM billing WHERE branch_id = ? AND DATE(billdate) = ?`,
-      [branchId, today]
+      `SELECT * FROM billing WHERE branch_id = ?`,
+      [branchId]
     );
 
     if (!billsRaw.length) {
@@ -374,7 +376,6 @@ async function pullBillingForBranch(branchId) {
 
     const insertBills = db.transaction((chunk) => {
       for (const bill of chunk) {
-        // check if invoice already exists locally
         const exists = db
           .prepare(`SELECT 1 FROM billing WHERE invid = ? LIMIT 1`)
           .get(bill.invid);
@@ -388,6 +389,7 @@ async function pullBillingForBranch(branchId) {
           const fields = Object.keys(row);
           const values = Object.values(row);
           const query = buildInsertOrIgnoreQuery("billing", sanitizeRow(bill));
+          console.log(query, values);
           db.prepare(query).run(values);
           console.log(`Inserted bill (invid=${bill.invid})`);
         } catch (err) {
@@ -417,10 +419,12 @@ async function pullBillingForBranch(branchId) {
       const insertItems = db.transaction((items) => {
         for (const item of items) {
           try {
+            delete item.created_at;
             const { query, values } = buildInsertOrIgnoreQuery(
               "billing_items",
               sanitizeRow(item)
             );
+            console.log(query, values)
             db.prepare(query).run(values);
           } catch (err) {
             console.error(

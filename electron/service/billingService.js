@@ -179,6 +179,7 @@ export async function addBilling(billData) {
         balanceAmount: bill.balanceAmount || 0,
         synced: 0,
       };
+      
       const billingFields = Object.keys(billingData);
       const billingValues = Object.values(billingData);
 
@@ -246,7 +247,6 @@ export async function addBilling(billData) {
             const itemFields = Object.keys(itemData);
             const itemValues = Object.values(itemData);
             const placeholders = itemFields.map(() => "?").join(",");
-
             const liveItemQuery = `INSERT INTO table_details (${itemFields.join(
               ","
             )}) VALUES (${placeholders})`;

@@ -45,7 +45,7 @@ app.whenReady().then(async () => {
     await syncTable("products");
     await syncTable("customers");
     await syncTable("expensecategory");
-    startServer();
+    // startServer();
   } catch (error) {
     console.log(error);
   }
