@@ -243,7 +243,7 @@ export function generateBillHTML(bill) {
             <th>Name</th>
             <th class="right">MRP</th>
             <th class="right">Qty</th>
-            <th class="right">Tax(%)</th>
+             <th class="right">Tax(%)</th>
             <th style="text-align: end;">Total</th>
           </tr>
         </thead>

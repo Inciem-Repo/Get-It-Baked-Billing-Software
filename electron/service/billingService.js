@@ -83,11 +83,11 @@ export function generateInvoiceNo(branchId, paymentType) {
   let prefix;
 
   switch (paymentType.toLowerCase()) {
-    case "online":
-      prefix = `INVL${branchId}`;
+    case "splitcash":
+      prefix = `INVSC${branchId}`;
       break;
     case "cash":
-      prefix = `INVCL${branchId}`;
+      prefix = `INVC${branchId}`;
       break;
     case "splitcash":
       prefix = `INVSCL${branchId}`;
@@ -96,10 +96,10 @@ export function generateInvoiceNo(branchId, paymentType) {
       prefix = `INVSL${branchId}`;
       break;
     case "split":
-      prefix = `INVSL${branchId}`;
+      prefix = `INVS${branchId}`;
       break;
     default:
-      prefix = `INVL${branchId}`;
+      prefix = `INV${branchId}`;
       break;
   }
 
@@ -116,7 +116,6 @@ export function generateInvoiceNo(branchId, paymentType) {
     .get(`${prefix}%`);
 
   let newNumber;
-
   if (row) {
     const lastNumber = parseInt(row.invid.split("-").pop(), 10);
     newNumber = String(lastNumber + 1).padStart(5, "0");
@@ -143,8 +142,6 @@ export async function addBilling(billData) {
           paymentType: "split",
         });
       }
-
-      // Cash bill (generate new invoiceNo)
       if (cashAmount > 0) {
         const cashInvoice = generateInvoiceNo(branch.id, "splitCash");
         billsToInsert.push({
@@ -179,19 +176,15 @@ export async function addBilling(billData) {
         balanceAmount: bill.balanceAmount || 0,
         synced: 0,
       };
-      
+
       const billingFields = Object.keys(billingData);
       const billingValues = Object.values(billingData);
-
-      // Insert into local DB
       const billingQuery = buildInsertQuery("billing", billingFields);
       const result = db.prepare(billingQuery).run(billingValues);
       const billId = result.lastInsertRowid;
 
       if (!billId)
         throw new Error("Bill insert failed — invoice may already exist.");
-
-      // Insert items into local DB
       for (const item of bill.items) {
         const itemData = {
           bill_id: billId,
@@ -210,7 +203,6 @@ export async function addBilling(billData) {
         db.prepare(itemQuery).run(itemValues);
       }
 
-      // --- Try syncing online if available ---
       const online = await isOnline();
       if (online) {
         try {
@@ -232,7 +224,6 @@ export async function addBilling(billData) {
           );
 
           const liveBillId = liveResult.insertId;
-          // Insert items into live DB
           for (const item of bill.items) {
             const itemData = {
               bill_id: liveBillId,
