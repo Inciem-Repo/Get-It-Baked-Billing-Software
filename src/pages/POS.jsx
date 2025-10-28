@@ -325,29 +325,6 @@ const POS = () => {
     }));
   }, [items, type]);
 
-  const addNewRow = () => {
-    const newItem = {
-      id: Date.now(),
-      item: "",
-      unitPrice: 0,
-      quantity: 1,
-      unit: "",
-      taxableValue: 0,
-      cgstRate: 0,
-      cgstAmount: 0,
-      igstRate: 0,
-      igstAmount: 0,
-      total: 0,
-    };
-    setItems([...items, newItem]);
-  };
-
-  const removeRow = (id) => {
-    if (items.length > 1) {
-      setItems(items.filter((item) => item.id !== id));
-    }
-  };
-
   const updateItem = (id, field, value) => {
     setItems((prev) =>
       prev.map((item) => {
@@ -384,48 +361,6 @@ const POS = () => {
       toast.error("Failed to add:");
     }
   };
-
-  const calculateTotals = () => {
-    const totalTaxableValue = items.reduce(
-      (sum, item) => sum + item.taxableValue,
-      0
-    );
-    const totalCGST = items.reduce((sum, item) => sum + item.cgstAmount, 0);
-    const totalIGST = items.reduce((sum, item) => sum + item.igstAmount, 0);
-
-    const grossTotal = totalTaxableValue + totalCGST + totalIGST;
-
-    const discountPercent = formData.discount || 0;
-    const discountAmount = (grossTotal * discountPercent) / 100;
-
-    const grandTotal = grossTotal;
-    const netTotal = grossTotal - discountAmount;
-
-    const advance = formData.advanceAmount || 0;
-
-    let balanceAmount = 0;
-    let balanceToCustomer = 0;
-
-    if (advance < grandTotal) {
-      balanceAmount = Number((grandTotal - advance).toFixed(2));
-    } else if (advance > grandTotal) {
-      balanceToCustomer = Number((advance - grandTotal).toFixed(2));
-    }
-
-    return {
-      totalTaxableValue: Number(totalTaxableValue.toFixed(2)),
-      totalCGST: Number(totalCGST.toFixed(2)),
-      totalIGST: Number(totalIGST.toFixed(2)),
-      grossTotal: Number(grossTotal.toFixed(2)),
-      netTotal: Number(netTotal.toFixed(2)),
-      discountAmount: Number(discountAmount.toFixed(2)),
-      grandTotal: Number(grandTotal.toFixed(2)),
-      balanceAmount,
-      balanceToCustomer,
-    };
-  };
-
-  const totals = calculateTotals();
 
   useEffect(() => {
     const getProducts = async () => {
@@ -470,22 +405,6 @@ const POS = () => {
             }
           : row
       )
-    );
-  };
-  const updateItem = (id, field, value) => {
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-
-        const updatedItem = { ...item, [field]: value };
-        const totalTax = updatedItem.cgstRate + updatedItem.igstRate;
-        const taxableValue =
-          (updatedItem.unitPrice / (1 + totalTax / 100)) * updatedItem.quantity;
-        const cgstAmount = (taxableValue * updatedItem.cgstRate) / 100;
-        const igstAmount = (taxableValue * updatedItem.igstRate) / 100;
-        const total = taxableValue + cgstAmount + igstAmount;
-        return { ...updatedItem, taxableValue, cgstAmount, igstAmount, total };
-      })
     );
   };
 
