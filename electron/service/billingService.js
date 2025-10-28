@@ -7,6 +7,7 @@ import {
   buildInsertQuery,
   buildSelectQuery,
 } from "../lib/buildQueries.js";
+import { formatDateToYMD, getDayName } from "../lib/helper.js";
 import { getUser } from "./userService.js";
 import isOnline from "is-online";
 
@@ -82,11 +83,17 @@ export function generateInvoiceNo(branchId, paymentType) {
   let prefix;
 
   switch (paymentType.toLowerCase()) {
-    case "splitcash":
-      prefix = `INVSCL${branchId}`;
+    case "online":
+      prefix = `INVL${branchId}`;
       break;
     case "cash":
       prefix = `INVCL${branchId}`;
+      break;
+    case "splitcash":
+      prefix = `INVSCL${branchId}`;
+      break;
+    case "splitonline":
+      prefix = `INVSL${branchId}`;
       break;
     case "split":
       prefix = `INVSL${branchId}`;
@@ -148,7 +155,6 @@ export async function addBilling(billData) {
         });
       }
     } else {
-      // Normal single bill
       billsToInsert.push(billData);
     }
 
@@ -166,11 +172,11 @@ export async function addBilling(billData) {
         bill_type: "sale",
         paymenttype: bill.paymentType || "",
         billdate: bill.date,
-        branch_id: branch.id,
+        branch_id: String(branch.id),
         pdflink: "",
         customernote: bill.customerNote,
         advanceamount: bill.advanceAmount || 0,
-        balanceAmount: bill.balanceToCustomer || 0,
+        balanceAmount: bill.balanceAmount || 0,
         synced: 0,
       };
       
@@ -216,7 +222,6 @@ export async function addBilling(billData) {
           const liveFields = Object.keys(liveBillingData);
           const liveValues = Object.values(liveBillingData);
           const placeholders = liveFields.map(() => "?").join(",");
-
           const liveBillQuery = `INSERT INTO billing (${liveFields.join(
             ","
           )}) VALUES (${placeholders})`;
@@ -227,7 +232,6 @@ export async function addBilling(billData) {
           );
 
           const liveBillId = liveResult.insertId;
-
           // Insert items into live DB
           for (const item of bill.items) {
             const itemData = {
@@ -247,7 +251,7 @@ export async function addBilling(billData) {
               ","
             )}) VALUES (${placeholders})`;
 
-            await mysqlConn.execute(liveItemQuery, itemValues);
+            const res = await mysqlConn.execute(liveItemQuery, itemValues);
           }
 
           db.prepare("UPDATE billing SET synced = 1 WHERE id = ?").run(billId);
@@ -263,6 +267,95 @@ export async function addBilling(billData) {
   } catch (err) {
     console.error("Error adding bill:", err.message);
     throw err;
+  }
+}
+export async function getBillingSummary() {
+  try {
+    const branch = getUser();
+    const branchId = branch.id;
+
+    // Total summary
+    const totalSummary = db
+      .prepare(
+        `
+        SELECT 
+          COUNT(*) AS totalBills,
+          IFNULL(SUM(grandTotalf), 0) AS totalGrandTotal
+        FROM billing
+        WHERE synced = 1
+          AND CAST(branch_id AS INTEGER) = ?
+        `
+      )
+      .get(branchId);
+
+    // Today's summary
+    const today = new Date().toISOString().slice(0, 10);
+    const todaySummary = db
+      .prepare(
+        `
+        SELECT 
+          COUNT(*) AS todayBillCount,
+          IFNULL(SUM(grandTotalf), 0) AS todayGrandTotal
+        FROM billing
+        WHERE CAST(branch_id AS INTEGER) = ?
+          AND DATE(billdate) = ?
+          AND synced = 1
+        `
+      )
+      .get(branchId, today);
+
+    // Final result
+    return {
+      totalBills: totalSummary.totalBills || 0,
+      totalGrandTotal: parseFloat(totalSummary.totalGrandTotal || 0).toFixed(2),
+      todayBillCount: todaySummary.todayBillCount || 0,
+      todayGrandTotal: parseFloat(todaySummary.todayGrandTotal || 0).toFixed(2),
+    };
+  } catch (error) {
+    console.error("Error fetching billing summary:", error);
+    throw new Error("Failed to get billing summary");
+  }
+}
+export async function getPerformanceSummary(fromDate, toDate) {
+  try {
+    const branch = getUser();
+    const branchId = branch.id;
+
+    const today = new Date();
+    let from;
+    let to;
+
+    if (fromDate && toDate) {
+      from = new Date(fromDate);
+      to = new Date(toDate);
+    } else {
+      to = today;
+      from = new Date();
+      from.setDate(to.getDate() - 6);
+    }
+
+    const result = [];
+
+    const stmt = db.prepare(`
+      SELECT IFNULL(SUM(grandTotalf), 0) AS amount
+      FROM billing
+      WHERE CAST(branch_id AS INTEGER) = ?
+        AND DATE(billdate) = ?
+        AND synced = 1
+    `);
+    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+      const dateStr = formatDateToYMD(d);
+      const row = stmt.get(branchId, dateStr);
+      result.push({
+        date: getDayName(d),
+        amount: parseFloat(row.amount || 0),
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching performance summary:", error);
+    throw new Error("Failed to fetch performance data");
   }
 }
 export async function updateBilling(billData) {
@@ -317,5 +410,154 @@ export async function updateBilling(billData) {
     throw err;
   } finally {
     if (mysqlConn) await mysqlConn.end();
+  }
+}
+export async function addSplitBillController(billData) {
+  try {
+    const branch = getUser();
+    const onlineAmount = Number(billData.onlineAmount || 0);
+    const cashAmount = Number(billData.cashAmount || 0);
+    const grandTotal = Number(billData.grandTotalf || billData.amount || 0);
+
+    if (billData.paymentType !== "Split")
+      throw new Error("Not a split bill request.");
+
+    if (!onlineAmount && !cashAmount)
+      throw new Error("Both online and cash amounts are missing.");
+
+    const createdBills = [];
+    async function insertBill(billPayload, type) {
+      const billingFields = Object.keys(billPayload);
+      const billingValues = Object.values(billPayload);
+      const query = buildInsertQuery("billing", billingFields);
+
+      const result = db.prepare(query).run(billingValues);
+      const localBillId = result.lastInsertRowid;
+
+      if (!localBillId) throw new Error(`Local ${type} bill insert failed.`);
+      for (const item of billData.items) {
+        const itemData = {
+          bill_id: localBillId,
+          item_id: item.productId,
+          qty: item.quantity,
+          unit_price: item.unitPrice,
+          taxable_value: item.taxableValue,
+          cgst_value: item.cgstAmount,
+          igst_value: item.igstAmount,
+          total_price: item.total,
+        };
+        const fields = Object.keys(itemData);
+        const values = Object.values(itemData);
+        const itemQuery = buildInsertQuery("billing_items", fields);
+        db.prepare(itemQuery).run(values);
+      }
+
+      // --- Sync live if online
+      const online = await isOnline();
+      if (online) {
+        try {
+          const mysqlConn = await getMySqlConnection();
+          const liveData = { ...billPayload };
+          delete liveData.synced;
+
+          const fields = Object.keys(liveData);
+          const values = Object.values(liveData);
+          const placeholders = fields.map(() => "?").join(",");
+
+          const liveQuery = `INSERT INTO billing (${fields.join(
+            ","
+          )}) VALUES (${placeholders})`;
+
+          const [liveResult] = await mysqlConn.execute(liveQuery, values);
+          const liveBillId = liveResult.insertId;
+          for (const item of billData.items) {
+            const itemData = {
+              bill_id: liveBillId,
+              item_id: item.productId,
+              qty: item.quantity,
+              unit_price: item.unitPrice,
+              taxable_value: item.taxableValue,
+              cgst_value: item.cgstAmount,
+              igst_value: item.igstAmount,
+              total_price: item.total,
+            };
+            const fields = Object.keys(itemData);
+            const values = Object.values(itemData);
+            const placeholders = fields.map(() => "?").join(",");
+            const liveItemQuery = `INSERT INTO table_details (${fields.join(
+              ","
+            )}) VALUES (${placeholders})`;
+            await mysqlConn.execute(liveItemQuery, values);
+          }
+
+          db.prepare("UPDATE billing SET synced = 1 WHERE id = ?").run(
+            localBillId
+          );
+          createdBills.push({ type, localBillId, liveBillId });
+        } catch (err) {
+          console.error(`Failed to sync ${type} bill:`, err.message);
+          createdBills.push({ type, localBillId, liveBillId: null });
+        }
+      } else {
+        createdBills.push({ type, localBillId, liveBillId: null });
+      }
+    }
+    const onlineDiscountPercent =
+      grandTotal > 0 ? (cashAmount / grandTotal) * 100 : 0;
+    const cashDiscountPercent =
+      grandTotal > 0 ? (onlineAmount / grandTotal) * 100 : 0;
+
+    // --- Online bill
+    if (onlineAmount > 0) {
+      const onlineInvoice = generateInvoiceNo(branch.id, "splitOnline");
+      const onlineBill = {
+        invid: onlineInvoice,
+        totalTaxableValuef: billData.totalTaxableValue || 0,
+        totalCgstf: billData.totalCGST || 0,
+        totalIgstf: billData.totalIGST || 0,
+        discountPercentf: Number(onlineDiscountPercent.toFixed(2)),
+        grandTotalf: onlineAmount,
+        customer_id: billData.customerId,
+        bill_type: "online",
+        paymenttype: "split",
+        billdate: billData.date,
+        branch_id: branch.id,
+        pdflink: "",
+        customernote: billData.customerNote,
+        advanceamount: billData.advanceAmount || 0,
+        balanceAmount: billData.balanceAmount || 0,
+        synced: 0,
+      };
+      await insertBill(onlineBill, "online");
+    }
+
+    // --- Cash bill
+    if (cashAmount > 0) {
+      const cashInvoice = generateInvoiceNo(branch.id, "splitCash");
+      const cashBill = {
+        invid: cashInvoice,
+        totalTaxableValuef: billData.totalTaxableValue || 0,
+        totalCgstf: billData.totalCGST || 0,
+        totalIgstf: billData.totalIGST || 0,
+        discountPercentf: Number(cashDiscountPercent.toFixed(2)),
+        grandTotalf: cashAmount,
+        customer_id: billData.customerId,
+        bill_type: "cash",
+        paymenttype: "split",
+        billdate: billData.date,
+        branch_id: branch.id,
+        pdflink: "",
+        customernote: billData.customerNote,
+        advanceamount: billData.advanceAmount || 0,
+        balanceAmount: billData.balanceAmount || 0,
+        synced: 0,
+      };
+      await insertBill(cashBill, "cash");
+    }
+
+    return createdBills;
+  } catch (err) {
+    console.error("Error adding split bill:", err.message);
+    throw err;
   }
 }

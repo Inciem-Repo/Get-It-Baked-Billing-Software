@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Calendar, Edit, Eye } from "lucide-react";
-import Header from "../components/layout/header";
+import Header from "../components/layout/Header";
 import {
-  getAllBillHistory,
   getBillDetailsById,
   getBillingInfo,
   getBillingInvoice,
@@ -62,9 +61,9 @@ const BillingHistory = () => {
     setShowTypeDropdown(false);
   };
 
-  const handleViewInvoice = async (billId) => {
+  const handleViewInvoice = async (billId, type = "customer") => {
     try {
-      await getBillingInvoice(billId, branchInfo);
+      await getBillingInvoice(billId, branchInfo, type);
     } catch (error) {
       console.log(error);
     }
@@ -240,7 +239,7 @@ const BillingHistory = () => {
                       onClick={() => {
                         handleTabChange("cash");
                       }}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 border-b ${
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50  ${
                         activeTab === "cash"
                           ? "bg-blue-50 text-blue-600 font-medium"
                           : "text-gray-700"
@@ -376,12 +375,24 @@ const BillingHistory = () => {
                       {bill.billdate}
                     </td>
                     <td className="px-4 py-4 flex items-center text-sm">
-                      <button
-                        className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
-                        onClick={() => handleViewInvoice(bill.id, branchInfo)}
-                      >
-                        View Invoice
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                          onClick={() => handleViewInvoice(bill.id, "branch")}
+                        >
+                          View Invoice
+                        </button>
+                        {bill.paymenttype == "split" && (
+                          <button
+                            className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                            onClick={() =>
+                              handleViewInvoice(bill.id, "customer")
+                            }
+                          >
+                            Customer Invoice
+                          </button>
+                        )}
+                      </div>
                       {bill.billdate ==
                         new Date().toISOString().split("T")[0] && (
                         <button

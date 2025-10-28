@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const NumberInput = ({ value = 0, onChange, className }) => {
+const NumberInput = ({ value = 0, onChange, className, readOnly = false }) => {
   const [inputValue, setInputValue] = useState(String(value ?? 0));
 
   useEffect(() => {
@@ -8,6 +8,7 @@ const NumberInput = ({ value = 0, onChange, className }) => {
   }, [value]);
 
   const handleChange = (e) => {
+    if (readOnly) return;
     let val = e.target.value;
 
     // Allow only numbers and decimals
@@ -33,6 +34,7 @@ const NumberInput = ({ value = 0, onChange, className }) => {
       onChange={handleChange}
       onBlur={handleBlur}
       className={className}
+      readOnly={readOnly}
     />
   );
 };

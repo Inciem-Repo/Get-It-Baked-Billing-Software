@@ -10,17 +10,24 @@ contextBridge.exposeInMainWorld("api", {
   getCustomerById: (id) => ipcRenderer.invoke("get-customer-by-id", id),
   addCustomer: (customer) => ipcRenderer.invoke("add-customer", customer),
   updateBilling: (billData) => ipcRenderer.invoke("update-billing", billData),
-  
+
   getBillingDetails: (args) => ipcRenderer.invoke("get-billing-details", args),
   openPrintPreview: (bill) => ipcRenderer.invoke("open-print-preview", bill),
   generateInvoiceNo: (branchId, paymentType) =>
     ipcRenderer.invoke("generate-invoice-no", branchId, paymentType),
   confirmPrint: (data) => ipcRenderer.invoke("confirm-print", data),
   addBilling: (billData) => ipcRenderer.invoke("add-billing", billData),
+  getSummary: () => ipcRenderer.invoke("billing-getSummary"),
+  getPerformanceSummary: (fromDate, toDate) =>
+    ipcRenderer.invoke("get-performance-summary", {
+      fromDate,
+      toDate,
+    }),
+
   searchCustomers: (searchTerm) =>
     ipcRenderer.invoke("search-customers", searchTerm),
-  printInvoice: (billId, branchInfo) =>
-    ipcRenderer.invoke("print-invoice-by-id", { billId, branchInfo }),
+  printInvoice: (billId, branchInfo, type) =>
+    ipcRenderer.invoke("print-invoice-by-id", { billId, branchInfo,type }),
   getBillDetails: (billId) => ipcRenderer.invoke("get-bill-by-id", billId),
 
   getAllBillHistory: (conditions) =>
@@ -33,6 +40,7 @@ contextBridge.exposeInMainWorld("api", {
   savePrinter: (printer) => ipcRenderer.invoke("save-printer", printer),
   expenseGetAll: (conditions) =>
     ipcRenderer.invoke("expense-get-all", conditions),
+  getExpenseSummary: () => ipcRenderer.invoke("expense-getSummary"),
   getExpenseCategories: () => ipcRenderer.invoke("get-expense-categories"),
   addExpense: (expenseData) => ipcRenderer.invoke("expense-add", expenseData),
 
@@ -47,4 +55,32 @@ contextBridge.exposeInMainWorld("api", {
   onDownloadProgress: (cb) =>
     ipcRenderer.on("download_progress", (e, data) => cb(data)),
   onUpdateError: (cb) => ipcRenderer.on("update_error", (e, err) => cb(err)),
+
+  addKot: (kotData) => ipcRenderer.invoke("kot-add", kotData),
+  addSplitBill: (billData) =>
+    ipcRenderer.invoke("billing-addSplitBill", billData),
+  generateKOTToken: () => ipcRenderer.invoke("kot-generate-token"),
+  getKOTByBranch: () => ipcRenderer.invoke("kot-getBy-Branch"),
+  updateKOTStatus: (kotId, status) =>
+    ipcRenderer.invoke("update-kot-status", { kotId, status }),
+  getKOTDetailsById: (kotToken) =>
+    ipcRenderer.invoke("get-kot-by-token", kotToken),
+  updateKOTInvoiceByToken: (kotToken, invoiceId) =>
+    ipcRenderer.invoke("updateKOTInvoiceByToken", { kotToken, invoiceId }),
+  getLastKot: () => ipcRenderer.invoke("get-last-kot"),
+  insertKotConfig: (data) => ipcRenderer.invoke("insert-kot-config", data),
+  getKotConfig: () => ipcRenderer.invoke("get-kot-config"),
+  updateKotConfig: (data) => ipcRenderer.invoke("update-kot-config", data),
+
+  //advance billing
+  addAdvanceBilling: (billData) =>
+    ipcRenderer.invoke("add-advance-billing", billData),
+  getAdvanceBillingDetails: (args) =>
+    ipcRenderer.invoke("get-advance-billing-details", args),
+  getAdvanceBillingById: (id) =>
+    ipcRenderer.invoke("get-advance-billing-by-id", id),
+  convertAdvanceToBilling: (data) =>
+    ipcRenderer.invoke("billing-convertAdvance", data),
+  updateAdvanceBillType: (id, billType) =>
+    ipcRenderer.invoke("update-advance-bill-type", id, billType),
 });

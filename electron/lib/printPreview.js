@@ -195,6 +195,7 @@ export function generateBillHTML(bill) {
         .items-header th { text-align: left; font-weight: bold; padding: 2px; }
         .item-row td { padding: 2px; }
         .right { text-align: center; }
+        .sl_no {display:flex; align-item:start;}
         .totals { margin-top: 15px; font-size: 12px; }
         .total-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
         .total-row.final { font-weight: bold; }
@@ -220,7 +221,7 @@ export function generateBillHTML(bill) {
 
       <div class="bill-info">
         <div class="bill-info-row"><span>Date :</span><span>${
-          bill.date || new Date().toLocaleDateString("en-IN")
+          bill.date || "N/A"
         }</span></div>
         <div class="bill-info-row"><span>Invoice NO :</span><span>${
           bill.invoice || "N/A"
@@ -238,12 +239,12 @@ export function generateBillHTML(bill) {
       <table class="items-table">
         <thead class="items-header">
           <tr>
-            <th>Sl.</th>
+            <th>Sl</th>
             <th>Name</th>
             <th class="right">MRP</th>
             <th class="right">Qty</th>
-            <th class="right">Tax %</th>
-            <th class="right">Total</th>
+            <th class="right">Tax(%)</th>
+            <th style="text-align: end;">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -252,7 +253,7 @@ export function generateBillHTML(bill) {
               ?.map(
                 (item, i) => `
             <tr class="item-row">
-              <td>${i + 1}</td>
+              <td class="sl_no">${i + 1}</td>
               <td>${item.name}</td>
               <td class="right">${item.taxableValue || "0.00"}</td>
               <td class="right">${item.qty || 1}</td>
@@ -293,6 +294,23 @@ export function generateBillHTML(bill) {
         <div class="total-row final"><span>Net Total:</span><span>${
           bill.totals?.netTotal
         }</span></div>
+        ${
+          bill.cashAmount || bill.onlineAmount
+            ? `
+              <div class="separator"></div>
+              ${
+                bill.cashAmount
+                  ? `<div class="total-row"><span>Cash Amount:</span><span>${bill.cashAmount}</span></div>`
+                  : ""
+              }
+              ${
+                bill.onlineAmount
+                  ? `<div class="total-row"><span>Online Amount:</span><span>${bill.onlineAmount}</span></div>`
+                  : ""
+              }
+            `
+            : ""
+        }
       </div>
 
       <div class="footer"><em>Thank you for choosing us!<br>For any Complaints & Suggestions,<br>Contact us on +91 9539938305</em></div>
