@@ -18,7 +18,7 @@ export const menuItems = [
   // { id: "", label: "Dashboard", icon: LayoutDashboard },
   { id: "", label: "POS", icon: Receipt },
   { id: "billing-history", label: "Billing History", icon: History },
-  { id: "advance-billing", label: "Advance order", icon: NotebookPen },
+  // { id: "advance-billing", label: "Advance order", icon: NotebookPen },po
   {
     id: "reports",
     label: "Reports",

@@ -931,7 +931,7 @@ const POS = () => {
 
           <div className="flex space-x-2">
             {[
-              { label: "Advance Order", action: "advanceOrder" },
+              // { label: "Advance Order", action: "advanceOrder" },
               { label: "Save Details", action: "save" },
               { label: "Save & Print", action: "saveAndPrint" },
               { label: "Save & List", action: "saveAndList" },
