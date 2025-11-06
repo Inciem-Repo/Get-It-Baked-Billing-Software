@@ -18,6 +18,7 @@ const SearchableDropdown = ({
   maxHeight = "200px",
   labelKey = "",
   searchKeys = [],
+  showSuggections = true,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -371,7 +372,7 @@ const SearchableDropdown = ({
           </div>
         </div>
 
-        {isOpen && (
+        {showSuggections && isOpen && (
           <>
             {isInTable ? (
               <div

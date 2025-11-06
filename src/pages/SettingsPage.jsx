@@ -1,40 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SettingsAside, {
   findComponentByTabId,
 } from "../components/layout/SettingsAside";
 import Header from "../components/layout/Header";
+import { settingsMenuItems } from "../constance/menu";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("kot");
 
+  useEffect(() => {
+    const componentExists = !!findComponentByTabId(activeTab);
+    if (!componentExists && settingsMenuItems.length > 0) {
+      setActiveTab(settingsMenuItems[0].id);
+    }
+  }, [activeTab]);
+
   const renderActiveComponent = () => {
     const Component = findComponentByTabId(activeTab);
-
-    if (!Component) {
-      return (
-        <div className="text-center py-8">
-          <h2 className="text-xl font-semibold text-gray-600">
-            Component not found
-          </h2>
-          <p className="text-gray-500">
-            No component found for ID: {activeTab}
-          </p>
-          <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-            <p className="text-sm text-gray-600">
-              Available IDs:{" "}
-              {settingssettingsMenuItems
-                .flatMap((item) =>
-                  item.children
-                    ? [item.id, ...item.children.map((child) => child.id)]
-                    : item.id
-                )
-                .join(", ")}
-            </p>
-          </div>
-        </div>
-      );
-    }
-
+    if (!Component) return null;
     return <Component />;
   };
 
@@ -45,7 +28,9 @@ export default function SettingsPage() {
       </div>
       <div className=" overflow-auto bg-gray-50 flex">
         <SettingsAside activeTab={activeTab} setActiveTab={setActiveTab} />
-        <main className="flex-1 overflow-auto  p-2">{renderActiveComponent()}</main>
+        <main className="flex-1 overflow-auto  p-2">
+          {renderActiveComponent()}
+        </main>
       </div>
     </div>
   );

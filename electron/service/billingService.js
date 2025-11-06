@@ -84,22 +84,22 @@ export function generateInvoiceNo(branchId, paymentType) {
 
   switch (paymentType.toLowerCase()) {
     case "online":
-      prefix = `INVL${branchId}`;
+      prefix = `INV${branchId}`;
       break;
     case "cash":
-      prefix = `INVCL${branchId}`;
+      prefix = `INVC${branchId}`;
       break;
     case "splitcash":
-      prefix = `INVSCL${branchId}`;
+      prefix = `INVSC${branchId}`;
       break;
     case "splitonline":
-      prefix = `INVSL${branchId}`;
+      prefix = `INVS${branchId}`;
       break;
     case "split":
-      prefix = `INVSL${branchId}`;
+      prefix = `INVS${branchId}`;
       break;
     default:
-      prefix = `INVL${branchId}`;
+      prefix = `INV${branchId}`;
       break;
   }
 
@@ -261,6 +261,14 @@ export async function addBilling(billData) {
       }
 
       createdIds.push(billId);
+      try {
+        await backupBilling(bill);
+      } catch (backupErr) {
+        console.warn(
+          "[Backup Billing] Skipped due to error:",
+          backupErr.message
+        );
+      }
     }
 
     return createdIds;
@@ -558,6 +566,62 @@ export async function addSplitBillController(billData) {
     return createdBills;
   } catch (err) {
     console.error("Error adding split bill:", err.message);
+    throw err;
+  }
+}
+export async function backupBilling(billData) {
+  try {
+    const branch = getUser();
+    const billType =
+      billData.bill_type || billData.paymentType?.toLowerCase() === "split"
+        ? "split"
+        : "sale";
+    const billingData = {
+      invid: billData.invoiceNo,
+      totalTaxableValuef: Number(billData.totalTaxableValue || 0),
+      totalCgstf: Number(billData.totalCGST || 0),
+      totalIgstf: Number(billData.totalIGST || 0),
+      discountPercentf: Number(billData.discount || 0),
+      grandTotalf: Number(billData.amount || billData.grandTotalf || 0),
+      customer_id: billData.customerId || 0,
+      bill_type: billType,
+      paymenttype: billData.paymentType || "",
+      billdate: billData.date || new Date().toISOString().split("T")[0],
+      branch_id: branch.id,
+      pdflink: billData.pdflink || "",
+      customernote: billData.customerNote || "",
+      advanceamount: Number(billData.advanceAmount || 0),
+      balanceAmount: Number(billData.balanceAmount || 0),
+      synced: 0,
+    };
+    const billingFields = Object.keys(billingData);
+    const billingValues = Object.values(billingData);
+    const billingQuery = buildInsertQuery("backup_billing", billingFields);
+    const result = db.prepare(billingQuery).run(billingValues);
+    const billId = result.lastInsertRowid;
+
+    if (!billId) throw new Error("Failed to insert into backup_billing");
+    for (const item of billData.items || []) {
+      const itemData = {
+        bill_id: billId,
+        item_id: item.productId,
+        qty: Number(item.quantity || 0),
+        unit_price: Number(item.unitPrice || 0),
+        taxable_value: Number(item.taxableValue || 0),
+        cgst_value: Number(item.cgstAmount || 0),
+        igst_value: Number(item.igstAmount || 0),
+        total_price: Number(item.total || 0),
+      };
+
+      const itemFields = Object.keys(itemData);
+      const itemValues = Object.values(itemData);
+      const itemQuery = buildInsertQuery("backup_billing_items", itemFields);
+
+      db.prepare(itemQuery).run(itemValues);
+    }
+    return billId;
+  } catch (err) {
+    console.error("[backupBilling] Error:", err.message, err);
     throw err;
   }
 }

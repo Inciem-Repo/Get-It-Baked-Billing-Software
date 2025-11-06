@@ -7,7 +7,7 @@ import {
   saveAdvanceBillingInfo,
   saveAdvanceToBilling,
 } from "../service/advanceBillingService";
-import { Edit } from "lucide-react";
+import { Edit, Printer } from "lucide-react";
 import ClearAdvanceBillModal from "../components/ClearAdvanceBillModal";
 import {
   getBillingInvoice,
@@ -60,15 +60,10 @@ function AdvanceOrders() {
   };
 
   const handleFetchBillInfo = async (rowId) => {
-    // try {
-    //   const result = await getAdvanceBillingInfoById(rowId);
-    //   setSelectedBill(result.bill);
-    //   setIsModalOpen(true);
-    //   console.log(result);
-    // } catch (error) {
-    //   console.log(error);
-    // }
     navigate(`/pos?token=${encodeURIComponent(rowId)}&type=advanceOrder`);
+  };
+  const handlePrintBill = (billInfo) => {
+    console.log({ billInfo });
   };
 
   return (
@@ -138,12 +133,20 @@ function AdvanceOrders() {
               key: "action",
               label: "Action",
               render: (row) => (
-                <button
-                  className="text-blue-500 underline"
-                  onClick={() => handleFetchBillInfo(row.id)}
-                >
-                  <Edit />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    className="text-blue-500 underline"
+                    onClick={() => handleFetchBillInfo(row.id)}
+                  >
+                    <Edit />
+                  </button>
+                  <button
+                    className="text-blue-500 underline"
+                    onClick={() => handlePrintBill(row)}
+                  >
+                    <Printer />
+                  </button>
+                </div>
               ),
             },
           ]}

@@ -38,8 +38,8 @@ function App() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/pos" element={<POS />} />
+        {/* <Route path="/" element={<Dashboard />} /> */}
+        <Route path="/" element={<POS />} />
         <Route path="/billing-history" element={<BillingHistory />} />
         <Route path="/expense" element={<Expense />} />
         <Route path="/payment-report" element={<PaymentReport />} />

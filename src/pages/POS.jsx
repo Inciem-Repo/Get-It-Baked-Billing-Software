@@ -568,10 +568,8 @@ const POS = () => {
                 value={selectedCustomer}
                 labelKey="name"
                 searchKeys={["mobile"]}
-                fetchItems={async (searchTerm) => {
-                  const customers = await getCustomersInfo(searchTerm);
-                  return [{ id: 0, name: "Walking Customer" }, ...customers];
-                }}
+                fetchItems={null}
+                showSuggections={false}
               />
               <div className="">
                 <label className="block p-[10px] text-sm font-medium text-gray-700 mb-1" />
